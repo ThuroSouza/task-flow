@@ -11,9 +11,9 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-// GitHub Pages hosts this clean copy under /task-flow-supabase-clean.
-// The router basepath must match vite.pages.config.ts, otherwise redirects point to the old copy.
-const router = getRouter("/task-flow-supabase-clean");
+// GitHub Pages hosts this repository under /task-flow.
+// The router basepath must match vite.pages.config.ts.
+const router = getRouter("/task-flow");
 
 createRoot(rootElement).render(
   <StrictMode>
