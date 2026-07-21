@@ -9,71 +9,41 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppUsersRouteImport } from './routes/_app/users'
-import { Route as AppTrashRouteImport } from './routes/_app/trash'
-import { Route as AppTasksRouteImport } from './routes/_app/tasks'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
-import { Route as AppReportsRouteImport } from './routes/_app/reports'
-import { Route as AppNotesRouteImport } from './routes/_app/notes'
-import { Route as AppImportAtaRouteImport } from './routes/_app/import-ata'
-import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppClientsRouteImport } from './routes/_app/clients'
-import { Route as AppTasksIndexRouteImport } from './routes/_app/tasks.index'
-import { Route as AppTasksListRouteImport } from './routes/_app/tasks.list'
-import { Route as AppTasksKanbanRouteImport } from './routes/_app/tasks.kanban'
-import { Route as AppTasksCalendarRouteImport } from './routes/_app/tasks.calendar'
+import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppImportAtaRouteImport } from './routes/_app/import-ata'
+import { Route as AppNotesRouteImport } from './routes/_app/notes'
+import { Route as AppReportsRouteImport } from './routes/_app/reports'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppTasksRouteImport } from './routes/_app/tasks'
+import { Route as AppTrashRouteImport } from './routes/_app/trash'
+import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as AppClientReportClientIdRouteImport } from './routes/_app/client-report.$clientId'
+import { Route as AppTasksIndexRouteImport } from './routes/_app/tasks.index'
+import { Route as AppTasksCalendarRouteImport } from './routes/_app/tasks.calendar'
+import { Route as AppTasksKanbanRouteImport } from './routes/_app/tasks.kanban'
+import { Route as AppTasksListRouteImport } from './routes/_app/tasks.list'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppUsersRoute = AppUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTrashRoute = AppTrashRouteImport.update({
-  id: '/trash',
-  path: '/trash',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTasksRoute = AppTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppReportsRoute = AppReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotesRoute = AppNotesRouteImport.update({
-  id: '/notes',
-  path: '/notes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImportAtaRoute = AppImportAtaRouteImport.update({
-  id: '/import-ata',
-  path: '/import-ata',
+const AppClientsRoute = AppClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -81,9 +51,44 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
-const AppClientsRoute = AppClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
+const AppImportAtaRoute = AppImportAtaRouteImport.update({
+  id: '/import-ata',
+  path: '/import-ata',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotesRoute = AppNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrashRoute = AppTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUsersRoute = AppUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientReportClientIdRoute = AppClientReportClientIdRouteImport.update({
+  id: '/client-report/$clientId',
+  path: '/client-report/$clientId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTasksIndexRoute = AppTasksIndexRouteImport.update({
@@ -91,9 +96,9 @@ const AppTasksIndexRoute = AppTasksIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppTasksRoute,
 } as any)
-const AppTasksListRoute = AppTasksListRouteImport.update({
-  id: '/list',
-  path: '/list',
+const AppTasksCalendarRoute = AppTasksCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AppTasksRoute,
 } as any)
 const AppTasksKanbanRoute = AppTasksKanbanRouteImport.update({
@@ -101,15 +106,10 @@ const AppTasksKanbanRoute = AppTasksKanbanRouteImport.update({
   path: '/kanban',
   getParentRoute: () => AppTasksRoute,
 } as any)
-const AppTasksCalendarRoute = AppTasksCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const AppTasksListRoute = AppTasksListRouteImport.update({
+  id: '/list',
+  path: '/list',
   getParentRoute: () => AppTasksRoute,
-} as any)
-const AppClientReportClientIdRoute = AppClientReportClientIdRouteImport.update({
-  id: '/client-report/$clientId',
-  path: '/client-report/$clientId',
-  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -232,11 +232,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -246,60 +246,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/users': {
-      id: '/_app/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AppUsersRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/trash': {
-      id: '/_app/trash'
-      path: '/trash'
-      fullPath: '/trash'
-      preLoaderRoute: typeof AppTrashRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/tasks': {
-      id: '/_app/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof AppTasksRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/reports': {
-      id: '/_app/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AppReportsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/notes': {
-      id: '/_app/notes'
-      path: '/notes'
-      fullPath: '/notes'
-      preLoaderRoute: typeof AppNotesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/import-ata': {
-      id: '/_app/import-ata'
-      path: '/import-ata'
-      fullPath: '/import-ata'
-      preLoaderRoute: typeof AppImportAtaRouteImport
+    '/_app/clients': {
+      id: '/_app/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof AppClientsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -309,11 +267,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/clients': {
-      id: '/_app/clients'
-      path: '/clients'
-      fullPath: '/clients'
-      preLoaderRoute: typeof AppClientsRouteImport
+    '/_app/import-ata': {
+      id: '/_app/import-ata'
+      path: '/import-ata'
+      fullPath: '/import-ata'
+      preLoaderRoute: typeof AppImportAtaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notes': {
+      id: '/_app/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tasks': {
+      id: '/_app/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trash': {
+      id: '/_app/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof AppTrashRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/users': {
+      id: '/_app/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/client-report/$clientId': {
+      id: '/_app/client-report/$clientId'
+      path: '/client-report/$clientId'
+      fullPath: '/client-report/$clientId'
+      preLoaderRoute: typeof AppClientReportClientIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/tasks/': {
@@ -323,11 +330,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksIndexRouteImport
       parentRoute: typeof AppTasksRoute
     }
-    '/_app/tasks/list': {
-      id: '/_app/tasks/list'
-      path: '/list'
-      fullPath: '/tasks/list'
-      preLoaderRoute: typeof AppTasksListRouteImport
+    '/_app/tasks/calendar': {
+      id: '/_app/tasks/calendar'
+      path: '/calendar'
+      fullPath: '/tasks/calendar'
+      preLoaderRoute: typeof AppTasksCalendarRouteImport
       parentRoute: typeof AppTasksRoute
     }
     '/_app/tasks/kanban': {
@@ -337,19 +344,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksKanbanRouteImport
       parentRoute: typeof AppTasksRoute
     }
-    '/_app/tasks/calendar': {
-      id: '/_app/tasks/calendar'
-      path: '/calendar'
-      fullPath: '/tasks/calendar'
-      preLoaderRoute: typeof AppTasksCalendarRouteImport
+    '/_app/tasks/list': {
+      id: '/_app/tasks/list'
+      path: '/list'
+      fullPath: '/tasks/list'
+      preLoaderRoute: typeof AppTasksListRouteImport
       parentRoute: typeof AppTasksRoute
-    }
-    '/_app/client-report/$clientId': {
-      id: '/_app/client-report/$clientId'
-      path: '/client-report/$clientId'
-      fullPath: '/client-report/$clientId'
-      preLoaderRoute: typeof AppClientReportClientIdRouteImport
-      parentRoute: typeof AppRoute
     }
   }
 }
@@ -408,3 +408,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

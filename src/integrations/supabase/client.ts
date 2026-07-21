@@ -10,6 +10,99 @@ import type { Database } from './types';
  * In GitHub Pages, Vite replaces VITE_* values during build time. That means
  * changing the Supabase project later requires rebuilding and redeploying Pages.
  */
+function createFallbackQueryBuilder(message: string) {
+  const error = new Error(message);
+
+  const builder = new Proxy(
+    {
+      data: null,
+      error,
+    },
+    {
+      get(target, prop, receiver) {
+        if (prop === 'then') {
+          return (resolve: (value: unknown) => void) => resolve({ data: null, error });
+        }
+
+        if (prop === 'catch') {
+          return (callback: (error: Error) => unknown) => Promise.resolve({ data: null, error }).catch(callback);
+        }
+
+        if (prop === 'finally') {
+          return (callback: () => void) => Promise.resolve({ data: null, error }).finally(callback);
+        }
+
+        if (
+          prop === 'select' ||
+          prop === 'insert' ||
+          prop === 'update' ||
+          prop === 'delete' ||
+          prop === 'upsert' ||
+          prop === 'eq' ||
+          prop === 'in' ||
+          prop === 'order' ||
+          prop === 'limit' ||
+          prop === 'range' ||
+          prop === 'match' ||
+          prop === 'or' ||
+          prop === 'filter' ||
+          prop === 'not' ||
+          prop === 'is' ||
+          prop === 'contains' ||
+          prop === 'over'
+        ) {
+          return () => builder;
+        }
+
+        if (prop === 'single' || prop === 'maybeSingle') {
+          return () => Promise.resolve({ data: null, error });
+        }
+
+        if (prop === 'rpc') {
+          return () => Promise.resolve({ data: null, error });
+        }
+
+        if (prop in target) {
+          return Reflect.get(target, prop, receiver);
+        }
+
+        return undefined;
+      },
+    },
+  );
+
+  return builder as any;
+}
+
+function createFallbackSupabaseClient() {
+  const message = 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable database features.';
+  const error = new Error(message);
+
+  return {
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: null }, error }),
+      getSession: () => Promise.resolve({ data: { session: null }, error }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } }, error }),
+      signOut: () => Promise.resolve({ error }),
+      signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error }),
+      signUp: () => Promise.resolve({ data: { user: null, session: null }, error }),
+      signInWithOAuth: () => Promise.resolve({ data: { provider: '', url: '' }, error }),
+      setSession: () => Promise.resolve({ error }),
+      getClaims: () => Promise.resolve({ data: { claims: null }, error }),
+    },
+    from: () => createFallbackQueryBuilder(message),
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve({ data: null, error }),
+        download: () => Promise.resolve({ data: null, error }),
+        remove: () => Promise.resolve({ data: null, error }),
+        getPublicUrl: () => ({ data: { publicUrl: '' }, error }),
+      }),
+    },
+    removeChannel: () => undefined,
+  } as any;
+}
+
 function createSupabaseClient() {
   // Client-side static build: values come from GitHub Actions/local .env as VITE_*.
   // Local SSR/dev fallback: values can also come from process.env for compatibility.
@@ -17,13 +110,8 @@ function createSupabaseClient() {
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
+    console.warn('[Supabase] Missing credentials. Falling back to a local-safe client.');
+    return createFallbackSupabaseClient();
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
