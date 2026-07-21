@@ -59,6 +59,15 @@ export interface Client {
   name: string;
   color: string | null;
   description: string | null;
+  cnpj: string | null;
+  legal_name: string | null;
+  trade_name: string | null;
+  state_registration: string | null;
+  municipal_registration: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  responsible: string | null;
 }
 export interface Profile {
   id: string;

@@ -245,6 +245,15 @@ export type Database = {
           id: string
           name: string
           updated_at: string
+          cnpj: string | null
+          legal_name: string | null
+          trade_name: string | null
+          state_registration: string | null
+          municipal_registration: string | null
+          address: string | null
+          phone: string | null
+          email: string | null
+          responsible: string | null
         }
         Insert: {
           color?: string | null
@@ -254,6 +263,15 @@ export type Database = {
           id?: string
           name: string
           updated_at?: string
+          cnpj?: string | null
+          legal_name?: string | null
+          trade_name?: string | null
+          state_registration?: string | null
+          municipal_registration?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          responsible?: string | null
         }
         Update: {
           color?: string | null
@@ -263,6 +281,15 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          cnpj?: string | null
+          legal_name?: string | null
+          trade_name?: string | null
+          state_registration?: string | null
+          municipal_registration?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          responsible?: string | null
         }
         Relationships: []
       }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,19 +13,27 @@ import { useClients, useTasks, type Client } from "@/hooks/use-data";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/clients")({
-  component: ClientsPage,
+  component: Outlet,
 });
 
-function ClientsPage() {
+export function ClientsIndexPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const { data: clients = [] } = useClients();
   const { data: tasks = [] } = useTasks();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<Client | null>(null);
-  const [name, setName] = useState("");
   const [color, setColor] = useState("#1e3a8a");
   const [desc, setDesc] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [tradeName, setTradeName] = useState("");
+  const [stateRegistration, setStateRegistration] = useState("");
+  const [municipalRegistration, setMunicipalRegistration] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [responsible, setResponsible] = useState("");
   const [search, setSearch] = useState("");
   const filteredClients = clients.filter((client) => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
@@ -38,18 +46,49 @@ function ClientsPage() {
 
   const onOpen = (c: Client | null) => {
     setEdit(c);
-    setName(c?.name ?? "");
     setColor(c?.color ?? "#1e3a8a");
     setDesc(c?.description ?? "");
     setOpen(true);
+    setCnpj(c?.cnpj ?? "");
+    setTradeName(c?.trade_name ?? "");
+    setLegalName(c?.legal_name ?? "");
+    setMunicipalRegistration(c?.municipal_registration ?? "");
+    setStateRegistration(c?.state_registration ?? "");
+    setPhone(c?.phone ?? "");
+    setAddress(c?.address ?? "");
+    setEmail(c?.email ?? "");
+    setResponsible(c?.responsible ?? c?.name ?? "");
   };
 
   const save = async () => {
-    if (!name.trim()) return;
+    const displayName = tradeName.trim() || legalName.trim();
+    if (!displayName) {
+      toast.error("Preencha o Nome fantasia ou a Razão social.");
+      return;
+    }
+    const clientData = {
+      name: displayName,
+      color,
+      description: desc || null,
+      cnpj: cnpj || null,
+      legal_name: legalName || null,
+      trade_name: tradeName || null,
+      state_registration: stateRegistration || null,
+      municipal_registration: municipalRegistration || null,
+      address: address || null,
+      phone: phone || null,
+      email: email || null,
+      responsible: responsible || null,
+    };
     if (edit) {
-      await supabase.from("clients").update({ name, color, description: desc }).eq("id", edit.id);
+      await supabase
+      .from("clients")
+      .update(clientData)
+      .eq("id", edit.id);
     } else {
-      await supabase.from("clients").insert({ name, color, description: desc, created_by: user?.id });
+      await supabase
+      .from("clients")
+      .insert({ ...clientData, created_by: user?.id });
     }
     qc.invalidateQueries({ queryKey: ["clients"] });
     setOpen(false);
@@ -69,7 +108,7 @@ function ClientsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
           <p className="text-sm text-muted-foreground">Organize tarefas por cliente</p>
         </div>
-        <Button onClick={() => onOpen(null)}><Plus className="mr-2 h-4 w-4" />Novo cliente</Button>
+        <Button asChild><Link to="/clients/new"><Plus className="mr-2 h-4 w-4" />Novo cliente</Link></Button>
       </header>
       {/* CAMPO DE BUSCA DE CLIENTES */}
       <div className="relative max-w-md">
@@ -100,7 +139,9 @@ function ClientsPage() {
                       <Sparkles className="h-4 w-4 text-primary" />
                     </Link>
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => onOpen(c)}><Pencil className="h-4 w-4" /></Button>
+                  <Button asChild size="icon" variant="ghost" title="Editar cliente">
+                    <Link to="/clients/$clientId/edit" params={{ clientId: c.id }}><Pencil className="h-4 w-4" /></Link>
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => remove(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
               </div>
@@ -119,9 +160,41 @@ function ClientsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{edit ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-2"><Label>Nome</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Cor</Label><Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-10" /></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>CNPJ</Label>
+              <Input value={cnpj} onChange={(e) => setCnpj(e.target.value)} /></div>
+            <div className="space-y-2">
+                <Label>Nome fantasia</Label>
+                <Input value={tradeName} onChange={(e) => setTradeName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+                <Label>Razão social</Label>
+                <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} /></div>
+            <div className="space-y-2">
+                <Label>Inscrição Estadual</Label>
+                <Input value={stateRegistration} onChange={(e) => setStateRegistration(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+                <Label>Inscrição Municipal</Label>
+                <Input value={municipalRegistration} onChange={(e) => setMunicipalRegistration(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+                <Label>E-mail</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Endereço completo</Label>
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+            </div>
+            <div className="space-y-2"><Label>Responsável</Label><Input value={responsible} onChange={(e) => setResponsible(e.target.value)} /></div>
             <div className="space-y-2"><Label>Descrição</Label><Input value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Cor</Label><Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-10" /></div>
             <Button onClick={save} className="w-full">Salvar</Button>
           </div>
         </DialogContent>

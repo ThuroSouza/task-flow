@@ -22,10 +22,13 @@ import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as AppClientReportClientIdRouteImport } from './routes/_app/client-report.$clientId'
+import { Route as AppClientsIndexRouteImport } from './routes/_app/clients.index'
+import { Route as AppClientsNewRouteImport } from './routes/_app/clients.new'
 import { Route as AppTasksIndexRouteImport } from './routes/_app/tasks.index'
 import { Route as AppTasksCalendarRouteImport } from './routes/_app/tasks.calendar'
 import { Route as AppTasksKanbanRouteImport } from './routes/_app/tasks.kanban'
 import { Route as AppTasksListRouteImport } from './routes/_app/tasks.list'
+import { Route as AppClientsClientIdEditRouteImport } from './routes/_app/clients.$clientId.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -91,6 +94,16 @@ const AppClientReportClientIdRoute = AppClientReportClientIdRouteImport.update({
   path: '/client-report/$clientId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClientsIndexRoute = AppClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppClientsRoute,
+} as any)
+const AppClientsNewRoute = AppClientsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppClientsRoute,
+} as any)
 const AppTasksIndexRoute = AppTasksIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -111,11 +124,16 @@ const AppTasksListRoute = AppTasksListRouteImport.update({
   path: '/list',
   getParentRoute: () => AppTasksRoute,
 } as any)
+const AppClientsClientIdEditRoute = AppClientsClientIdEditRouteImport.update({
+  id: '/$clientId/edit',
+  path: '/$clientId/edit',
+  getParentRoute: () => AppClientsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/clients': typeof AppClientsRoute
+  '/clients': typeof AppClientsRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/import-ata': typeof AppImportAtaRoute
   '/notes': typeof AppNotesRoute
@@ -125,15 +143,17 @@ export interface FileRoutesByFullPath {
   '/trash': typeof AppTrashRoute
   '/users': typeof AppUsersRoute
   '/client-report/$clientId': typeof AppClientReportClientIdRoute
+  '/clients/new': typeof AppClientsNewRoute
   '/tasks/calendar': typeof AppTasksCalendarRoute
   '/tasks/kanban': typeof AppTasksKanbanRoute
   '/tasks/list': typeof AppTasksListRoute
+  '/clients/': typeof AppClientsIndexRoute
   '/tasks/': typeof AppTasksIndexRoute
+  '/clients/$clientId/edit': typeof AppClientsClientIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/clients': typeof AppClientsRoute
   '/dashboard': typeof AppDashboardRoute
   '/import-ata': typeof AppImportAtaRoute
   '/notes': typeof AppNotesRoute
@@ -142,17 +162,20 @@ export interface FileRoutesByTo {
   '/trash': typeof AppTrashRoute
   '/users': typeof AppUsersRoute
   '/client-report/$clientId': typeof AppClientReportClientIdRoute
+  '/clients/new': typeof AppClientsNewRoute
   '/tasks/calendar': typeof AppTasksCalendarRoute
   '/tasks/kanban': typeof AppTasksKanbanRoute
   '/tasks/list': typeof AppTasksListRoute
+  '/clients': typeof AppClientsIndexRoute
   '/tasks': typeof AppTasksIndexRoute
+  '/clients/$clientId/edit': typeof AppClientsClientIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_app/clients': typeof AppClientsRoute
+  '/_app/clients': typeof AppClientsRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/import-ata': typeof AppImportAtaRoute
   '/_app/notes': typeof AppNotesRoute
@@ -162,10 +185,13 @@ export interface FileRoutesById {
   '/_app/trash': typeof AppTrashRoute
   '/_app/users': typeof AppUsersRoute
   '/_app/client-report/$clientId': typeof AppClientReportClientIdRoute
+  '/_app/clients/new': typeof AppClientsNewRoute
   '/_app/tasks/calendar': typeof AppTasksCalendarRoute
   '/_app/tasks/kanban': typeof AppTasksKanbanRoute
   '/_app/tasks/list': typeof AppTasksListRoute
+  '/_app/clients/': typeof AppClientsIndexRoute
   '/_app/tasks/': typeof AppTasksIndexRoute
+  '/_app/clients/$clientId/edit': typeof AppClientsClientIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -182,15 +208,17 @@ export interface FileRouteTypes {
     | '/trash'
     | '/users'
     | '/client-report/$clientId'
+    | '/clients/new'
     | '/tasks/calendar'
     | '/tasks/kanban'
     | '/tasks/list'
+    | '/clients/'
     | '/tasks/'
+    | '/clients/$clientId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
-    | '/clients'
     | '/dashboard'
     | '/import-ata'
     | '/notes'
@@ -199,10 +227,13 @@ export interface FileRouteTypes {
     | '/trash'
     | '/users'
     | '/client-report/$clientId'
+    | '/clients/new'
     | '/tasks/calendar'
     | '/tasks/kanban'
     | '/tasks/list'
+    | '/clients'
     | '/tasks'
+    | '/clients/$clientId/edit'
   id:
     | '__root__'
     | '/'
@@ -218,10 +249,13 @@ export interface FileRouteTypes {
     | '/_app/trash'
     | '/_app/users'
     | '/_app/client-report/$clientId'
+    | '/_app/clients/new'
     | '/_app/tasks/calendar'
     | '/_app/tasks/kanban'
     | '/_app/tasks/list'
+    | '/_app/clients/'
     | '/_app/tasks/'
+    | '/_app/clients/$clientId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -323,6 +357,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientReportClientIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/clients/': {
+      id: '/_app/clients/'
+      path: '/'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AppClientsIndexRouteImport
+      parentRoute: typeof AppClientsRoute
+    }
+    '/_app/clients/new': {
+      id: '/_app/clients/new'
+      path: '/new'
+      fullPath: '/clients/new'
+      preLoaderRoute: typeof AppClientsNewRouteImport
+      parentRoute: typeof AppClientsRoute
+    }
     '/_app/tasks/': {
       id: '/_app/tasks/'
       path: '/'
@@ -351,8 +399,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksListRouteImport
       parentRoute: typeof AppTasksRoute
     }
+    '/_app/clients/$clientId/edit': {
+      id: '/_app/clients/$clientId/edit'
+      path: '/$clientId/edit'
+      fullPath: '/clients/$clientId/edit'
+      preLoaderRoute: typeof AppClientsClientIdEditRouteImport
+      parentRoute: typeof AppClientsRoute
+    }
   }
 }
+
+interface AppClientsRouteChildren {
+  AppClientsNewRoute: typeof AppClientsNewRoute
+  AppClientsIndexRoute: typeof AppClientsIndexRoute
+  AppClientsClientIdEditRoute: typeof AppClientsClientIdEditRoute
+}
+
+const AppClientsRouteChildren: AppClientsRouteChildren = {
+  AppClientsNewRoute: AppClientsNewRoute,
+  AppClientsIndexRoute: AppClientsIndexRoute,
+  AppClientsClientIdEditRoute: AppClientsClientIdEditRoute,
+}
+
+const AppClientsRouteWithChildren = AppClientsRoute._addFileChildren(
+  AppClientsRouteChildren,
+)
 
 interface AppTasksRouteChildren {
   AppTasksCalendarRoute: typeof AppTasksCalendarRoute
@@ -373,7 +444,7 @@ const AppTasksRouteWithChildren = AppTasksRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
-  AppClientsRoute: typeof AppClientsRoute
+  AppClientsRoute: typeof AppClientsRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppImportAtaRoute: typeof AppImportAtaRoute
   AppNotesRoute: typeof AppNotesRoute
@@ -386,7 +457,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppClientsRoute: AppClientsRoute,
+  AppClientsRoute: AppClientsRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppImportAtaRoute: AppImportAtaRoute,
   AppNotesRoute: AppNotesRoute,
