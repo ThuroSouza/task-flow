@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useClients, useTasks, type Client } from "@/hooks/use-data";
@@ -26,6 +26,15 @@ function ClientsPage() {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#1e3a8a");
   const [desc, setDesc] = useState("");
+  const [search, setSearch] = useState("");
+  const filteredClients = clients.filter((client) => {
+    const term = search.trim().toLocaleLowerCase("pt-BR");
+
+    return (
+      client.name.toLocaleLowerCase("pt-BR").includes(term) ||
+      client.description?.toLocaleLowerCase("pt-BR").includes(term)
+    );
+  });
 
   const onOpen = (c: Client | null) => {
     setEdit(c);
@@ -62,9 +71,18 @@ function ClientsPage() {
         </div>
         <Button onClick={() => onOpen(null)}><Plus className="mr-2 h-4 w-4" />Novo cliente</Button>
       </header>
-
+      {/* CAMPO DE BUSCA DE CLIENTES */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Localizar cliente..."
+          className="pl-9"
+        />
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {clients.map(c => {
+        {filteredClients.map(c => {
           const count = tasks.filter(t => t.client_id === c.id).length;
           return (
             <Card key={c.id} className="p-4">

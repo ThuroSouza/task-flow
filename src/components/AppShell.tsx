@@ -6,7 +6,7 @@ import { LayoutDashboard, ListChecks, Users, Building2, Settings, LogOut, Moon, 
 import { NotificationBell } from "@/components/NotificationBell";
 import { AssignmentPopup } from "@/components/AssignmentPopup";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import taskflowLogo from "@/assets/taskflow-logo.png.asset.json";
+import taskflowLogo from "@/assets/taskflow-logo.png";
 
 function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className={`flex items-center gap-2 py-5 ${sidebarOpen ? "px-5" : "px-2 justify-center"}`}>
           <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black ${sidebarOpen ? "h-9 w-9" : "h-9 w-9"}`}>
-            <img src={taskflowLogo.url} alt="TaskFlow" className="h-full w-full object-contain" />
+            <img src={taskflowLogo} alt="TaskFlow" className="h-full w-full object-contain" />
           </div>
           {sidebarOpen && <span className="text-lg font-semibold">TaskFlow</span>}
         </div>
@@ -144,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-2">
               <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black h-9 w-9">
-                <img src={taskflowLogo.url} alt="TaskFlow" className="h-full w-full object-contain" />
+                <img src={taskflowLogo} alt="TaskFlow" className="h-full w-full object-contain" />
               </div>
                 <span className="text-lg font-semibold">TaskFlow</span>
               </div>
