@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   // GitHub Pages serves project sites under /<repo-name>/.
   // Keep this in sync with the repository name, otherwise asset URLs break and the page opens blank.
-  base: "/task-flow-supabase-clean/",
+  base: "/task-flow/",
   define: {
     // The app uses this flag to avoid TanStack Start server behavior in the static GitHub Pages build.
     "import.meta.env.VITE_GITHUB_PAGES": JSON.stringify("true"),
