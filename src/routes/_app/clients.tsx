@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,31 @@ export function ClientsIndexPage() {
   const [email, setEmail] = useState("");
   const [responsible, setResponsible] = useState("");
   const [search, setSearch] = useState("");
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAvatarUrls = async () => {
+      const urls = await Promise.all(
+        clients
+          .filter((client) => client.avatar_path)
+          .map(async (client) => {
+            const { data } = await supabase.storage
+              .from("task-attachments")
+              .createSignedUrl(client.avatar_path!, 3600);
+            return [client.id, data?.signedUrl ?? ""] as const;
+          }),
+      );
+
+      if (!cancelled) setAvatarUrls(Object.fromEntries(urls));
+    };
+
+    void loadAvatarUrls();
+    return () => {
+      cancelled = true;
+    };
+  }, [clients]);
   const filteredClients = clients.filter((client) => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
 
@@ -127,7 +152,15 @@ export function ClientsIndexPage() {
             <Card key={c.id} className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg" style={{ background: c.color || "#1e3a8a" }} />
+                  {avatarUrls[c.id] ? (
+                    <img
+                      src={avatarUrls[c.id]}
+                      alt={`Logo de ${c.name}`}
+                      className="h-10 w-10 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-lg" style={{ background: c.color || "#1e3a8a" }} />
+                  )}
                   <div>
                     <h3 className="font-semibold">{c.name}</h3>
                     <p className="text-xs text-muted-foreground">{count} tarefa(s)</p>

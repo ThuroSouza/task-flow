@@ -17,7 +17,6 @@ import {
   History,
   ListChecks,
   MoreHorizontal,
-  MoveHorizontal,
   Paperclip,
   Pencil,
   Plus,
@@ -95,6 +94,8 @@ interface CardComment {
 
 
 const LINK_MIME = "text/uri-list";
+const DESCRIPTION_PREVIEW_LIMIT = 250;
+const DESCRIPTION_COLLAPSED_LIMIT = 140;
 
 interface Props {
   task: Task;
@@ -132,6 +133,7 @@ function readableText(hex: string) {
 
 export function TaskCard({
   task,
+  columns = [],
   clients = [],
   profiles = [],
   tags = [],
@@ -150,6 +152,7 @@ export function TaskCard({
   const [titleDraft, setTitleDraft] = useState(task.title);
   const [descEditing, setDescEditing] = useState(false);
   const [descDraft, setDescDraft] = useState(task.description ?? "");
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
@@ -209,6 +212,8 @@ export function TaskCard({
 
   useEffect(() => setTitleDraft(task.title), [task.title]);
   useEffect(() => setDescDraft(task.description ?? ""), [task.description]);
+  // A expansão é local ao card: ao trocar/sair da tarefa ou recarregar, volta fechada.
+  useEffect(() => setDescriptionExpanded(false), [task.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -277,6 +282,14 @@ export function TaskCard({
   const assignee = useMemo(
     () => profiles.find((p) => p.id === task.assignee_id),
     [profiles, task.assignee_id],
+  );
+  const creator = useMemo(
+    () => profiles.find((p) => p.id === task.created_by),
+    [profiles, task.created_by],
+  );
+  const assigner = useMemo(
+    () => profiles.find((p) => p.id === task.assigned_by),
+    [profiles, task.assigned_by],
   );
 
   const update = async (patch: Partial<Task>) => {
@@ -647,6 +660,10 @@ export function TaskCard({
   const isActiveStatus = !!currentStatus?.is_active;
   const isCompletedStatus = !!currentStatus?.is_completed || !!task.completed_at;
   const completedColor = currentStatus?.is_completed ? currentStatus.color : "#10b981";
+  const listColor = useMemo(
+    () => columns.find((column) => column.id === task.column_id)?.color || (isCompletedStatus ? completedColor : "#1e3a8a"),
+    [columns, task.column_id, isCompletedStatus, completedColor],
+  );
 
   const changeStatus = async (s: TaskStatus) => {
     const patch: Partial<Task> = {
@@ -708,7 +725,7 @@ export function TaskCard({
       <div
         {...dragHandleProps}
         className={cn(
-          "group relative cursor-grab touch-none overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
+          "group relative flex h-[510px] w-full cursor-grab touch-none flex-col overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
           dueState === "overdue" && !isCompletedStatus && "border-destructive ring-2 ring-destructive/50",
           dueState === "today" && !isCompletedStatus && "border-destructive/70 ring-1 ring-destructive/30",
           dueState === "tomorrow" && !isCompletedStatus && "border-amber-500/70 ring-1 ring-amber-500/30",
@@ -716,7 +733,8 @@ export function TaskCard({
           isCompletedStatus && "ring-2 ring-emerald-500/70 border-emerald-500/40",
         )}
         style={{
-          ...(task.card_width ? { width: task.card_width, minWidth: task.card_width, maxWidth: "100%" } : null),
+          borderLeftWidth: 4,
+          borderLeftColor: listColor,
           ...(isCompletedStatus
             ? {
                 ["--tw-ring-color" as never]: completedColor,
@@ -749,7 +767,8 @@ export function TaskCard({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-1.5 p-2.5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+          <div className="flex flex-col gap-1.5">
         {/* Tags — multiple, click chip to manage */}
         {isVisible("tags") ? (
         <div className="mb-2 -mx-1" style={{ order: orderOf("tags") }}>
@@ -864,17 +883,17 @@ export function TaskCard({
           >
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Popover>
+          {false && <Popover>
             <PopoverTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6 shrink-0 opacity-0 transition group-hover:opacity-100"
+                className="hidden"
                 onPointerDown={stop}
                 onClick={stop}
                 title="Largura do card"
               >
-                <MoveHorizontal className="h-3.5 w-3.5" />
+                {null}
               </Button>
             </PopoverTrigger>
             <PopoverContent
@@ -909,7 +928,7 @@ export function TaskCard({
               </div>
 
             </PopoverContent>
-          </Popover>
+          </Popover>}
           <Button
             size="icon"
             variant="ghost"
@@ -968,7 +987,7 @@ export function TaskCard({
               }}
               onBlur={() => void saveDesc()}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   void saveDesc();
                 }
@@ -984,13 +1003,29 @@ export function TaskCard({
             />
           </>
         ) : task.description ? (
-          <p
-            onPointerDown={stop}
-            onClick={(e) => { stop(e); setDescEditing(true); }}
-            className="mb-2 cursor-text whitespace-pre-wrap rounded text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere] hover:bg-muted/40"
-          >
-            {task.description}
-          </p>
+          <div className="mb-2">
+            <p
+              onPointerDown={stop}
+              onClick={(e) => { stop(e); setDescEditing(true); }}
+              className="cursor-text whitespace-pre-wrap rounded text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere] hover:bg-muted/40"
+              style={descriptionExpanded ? { maxHeight: "min(18rem, max(8rem, calc(100vh - 22rem)))", overflowY: "auto" } : undefined}
+            >
+              {descriptionExpanded
+                ? task.description.slice(0, DESCRIPTION_PREVIEW_LIMIT)
+                : task.description.slice(0, DESCRIPTION_COLLAPSED_LIMIT).trimEnd()}
+              {task.description.length > (descriptionExpanded ? DESCRIPTION_PREVIEW_LIMIT : DESCRIPTION_COLLAPSED_LIMIT) ? "…" : ""}
+            </p>
+            {task.description.length > DESCRIPTION_COLLAPSED_LIMIT ? (
+              <button
+                type="button"
+                onPointerDown={stop}
+                onClick={(e) => { stop(e); setDescriptionExpanded((expanded) => !expanded); }}
+                className="mt-1 text-xs font-medium text-primary hover:underline"
+              >
+                {descriptionExpanded ? "Ver menos" : "Ver mais"}
+              </button>
+            ) : null}
+          </div>
         ) : null}
         </div>
         ) : null}
@@ -1066,7 +1101,7 @@ export function TaskCard({
                           onBlur={() => void saveSubtaskTitle()}
                           onSubmit={() => void saveSubtaskTitle()}
                           autoFocus
-                          placeholder="Escreva… (Ctrl+Enter para salvar)"
+                          placeholder="Escreva… (Enter para salvar)"
                           minHeight={40}
                         />
                       </div>
@@ -1161,12 +1196,12 @@ export function TaskCard({
                       }}
                       onBlur={() => void addSubtask()}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void addSubtask(); }
+                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void addSubtask(); }
                         if (e.key === "Escape") { setNewSubtask(""); setAddingSubtask(false); }
                       }}
                       onPointerDown={stop}
                       onClick={stop}
-                      placeholder="Nova subtarefa (Ctrl+Enter para salvar)"
+                      placeholder="Nova subtarefa (Enter para salvar)"
                       className="min-h-[24px] flex-1 resize-none overflow-hidden whitespace-pre-wrap border-none bg-transparent p-0 text-xs leading-snug shadow-none focus-visible:ring-0"
                     />
                   </div>
@@ -1414,6 +1449,19 @@ export function TaskCard({
           </div>
         ) : null}
 
+        <div className="mt-1 space-y-0.5" style={{ order: orderOf("meta") }}>
+          <div className="flex items-center gap-1.5 px-1 py-0.5 text-[11px] text-muted-foreground">
+            <UserIcon className="h-3 w-3 shrink-0" />
+            <span className="truncate">Criada por: {creator?.full_name || creator?.email || "Usuário não identificado"}</span>
+          </div>
+          {task.assignee_id && task.assigned_by ? (
+            <div className="flex items-center gap-1.5 px-1 py-0.5 text-[11px] text-muted-foreground">
+              <Users className="h-3 w-3 shrink-0" />
+              <span className="truncate">Atribuída por: {assigner?.full_name || assigner?.email || "Usuário não identificado"}</span>
+            </div>
+          ) : null}
+        </div>
+
         {/* Meta rows (empty fields) */}
         {isVisible("meta") ? (
         <div className="mt-1 space-y-0.5" style={{ order: orderOf("meta") }}>
@@ -1513,6 +1561,7 @@ export function TaskCard({
           />
         </div>
         ) : null}
+          </div>
         </div>
       </div>
 

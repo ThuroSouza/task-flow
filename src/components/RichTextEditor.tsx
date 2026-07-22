@@ -178,7 +178,7 @@ export function RichTextEditor({
         style: `min-height:${minHeight}px;`,
       },
       handleKeyDown: (_view, event) => {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
           onSubmit?.();
           return true;

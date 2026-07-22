@@ -19,6 +19,8 @@ export interface Task {
   priority: "low" | "medium" | "high" | "urgent" | null;
   due_date: string | null;
   assignee_id: string | null;
+  assigned_by: string | null;
+  assigned_at: string | null;
   client_id: string | null;
   column_id: string | null;
   position: number;
@@ -68,6 +70,27 @@ export interface Client {
   phone: string | null;
   email: string | null;
   responsible: string | null;
+  avatar_path: string | null;
+}
+export interface ClientDepartment {
+  id: string;
+  client_id: string;
+  name: string;
+  description: string | null;
+  position: number;
+  created_at: string;
+}
+export interface ClientDepartmentEmployee {
+  id: string;
+  department_id: string;
+  full_name: string;
+  registration: string | null;
+  cbo: string | null;
+  role: string | null;
+  salary: number | null;
+  activities: string | null;
+  avatar_path: string | null;
+  created_at: string;
 }
 export interface Profile {
   id: string;

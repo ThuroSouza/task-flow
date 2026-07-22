@@ -45,16 +45,10 @@ function SortableTaskCard({ task, colId, onEdit, onDuplicate, clients, profiles,
     transition: transition ?? "transform 180ms cubic-bezier(0.2, 0, 0, 1)",
     opacity: isDragging ? 0.4 : 1,
     willChange: "transform",
-    ...(task.card_width ? { width: task.card_width, minWidth: task.card_width } : null),
   } as CSSProperties;
-  const widthClass = task.card_width
-    ? "shrink-0"
-    : "w-72 min-w-0 shrink-0";
-
-
 
   return (
-    <div ref={setNodeRef} style={style} className={widthClass}>
+    <div ref={setNodeRef} style={style} className="w-72 min-w-0 shrink-0">
       <TaskCard
         task={task}
         columns={columns}
@@ -172,10 +166,14 @@ function SortableColumn({ col, taskIds, children, onEdit, onDelete, onAdd, orien
       <SortableContext items={taskIds} strategy={isH ? verticalListSortingStrategy : horizontalListSortingStrategy}>
         <div
           ref={setDropRef}
-          className={`kanban-scroll rounded-lg border-2 border-dashed p-2 transition ${
+          className={`kanban-scroll rounded-lg border-2 border-dashed border-l-4 p-2 transition ${
             isH ? "flex flex-col gap-3 overflow-y-auto" : "flex items-start gap-4 overflow-x-auto overflow-y-hidden"
           } ${isOver ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}
-          style={{ minHeight: isH ? 200 : 120, maxHeight: isH ? "calc(100vh - 360px)" : undefined }}
+          style={{
+            minHeight: isH ? 200 : 120,
+            maxHeight: isH ? "calc(100vh - 360px)" : undefined,
+            borderLeftColor: col.color || "#1e3a8a",
+          }}
         >
           {children}
         </div>
@@ -352,6 +350,21 @@ function KanbanPage() {
   const sortedTasks = useMemo(() => {
     const r = [...filtered];
     r.sort((a, b) => {
+      // Na ordenação padrão, tarefas recebidas de outro usuário vêm primeiro,
+      // sempre da maior prioridade para a menor.
+      if (sort.field === "position" && sort.direction === "asc" && user?.id) {
+        const wasAssignedToCurrentUser = (task: Task) =>
+          task.assignee_id === user.id && !!task.assigned_by && task.assigned_by !== user.id;
+        const aWasAssigned = wasAssignedToCurrentUser(a);
+        const bWasAssigned = wasAssignedToCurrentUser(b);
+        if (aWasAssigned !== bWasAssigned) return aWasAssigned ? -1 : 1;
+        if (aWasAssigned && bWasAssigned) {
+          const priorityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
+          const priorityComparison = (priorityOrder[b.priority ?? ""] || 0) - (priorityOrder[a.priority ?? ""] || 0);
+          if (priorityComparison !== 0) return priorityComparison;
+        }
+      }
+
       let cmp = 0;
       switch (sort.field) {
         case "due_date": {
@@ -402,7 +415,7 @@ function KanbanPage() {
       return sort.direction === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [filtered, sort, sort2, tagNameForTask, userTaskPos, statuses]);
+  }, [filtered, sort, sort2, tagNameForTask, userTaskPos, statuses, user?.id]);
 
   const tasksByCol = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -1222,5 +1235,3 @@ function KanbanScrollArea({
     </div>
   );
 }
-
-

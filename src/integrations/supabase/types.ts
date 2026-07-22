@@ -238,6 +238,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          avatar_path: string | null
           color: string | null
           created_at: string
           created_by: string | null
@@ -256,6 +257,7 @@ export type Database = {
           responsible: string | null
         }
         Insert: {
+          avatar_path?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -274,6 +276,7 @@ export type Database = {
           responsible?: string | null
         }
         Update: {
+          avatar_path?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -292,6 +295,88 @@ export type Database = {
           responsible?: string | null
         }
         Relationships: []
+      }
+      client_departments: {
+        Row: {
+          id: string
+          client_id: string
+          name: string
+          description: string | null
+          position: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          name: string
+          description?: string | null
+          position?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          name?: string
+          description?: string | null
+          position?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_departments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_department_employees: {
+        Row: {
+          id: string
+          department_id: string
+          full_name: string
+          registration: string | null
+          cbo: string | null
+          role: string | null
+          salary: number | null
+          activities: string | null
+          avatar_path: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          department_id: string
+          full_name: string
+          registration?: string | null
+          cbo?: string | null
+          role?: string | null
+          salary?: number | null
+          activities?: string | null
+          avatar_path?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          department_id?: string
+          full_name?: string
+          registration?: string | null
+          cbo?: string | null
+          role?: string | null
+          salary?: number | null
+          activities?: string | null
+          avatar_path?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_department_employees_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "client_departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       comment_attachments: {
         Row: {
@@ -856,6 +941,8 @@ export type Database = {
       tasks: {
         Row: {
           assignee_id: string | null
+          assigned_at: string | null
+          assigned_by: string | null
           card_width: number | null
           client_id: string | null
           color: string | null
@@ -879,6 +966,8 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
           card_width?: number | null
           client_id?: string | null
           color?: string | null
@@ -902,6 +991,8 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
           card_width?: number | null
           client_id?: string | null
           color?: string | null
