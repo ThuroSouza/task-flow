@@ -1,25 +1,82 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
-  DndContext, type CollisionDetection, type DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors,
-  DragOverlay, useDroppable, closestCenter, getFirstCollision, pointerWithin, rectIntersection,
+  DndContext,
+  type CollisionDetection,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  useDroppable,
+  closestCenter,
+  getFirstCollision,
+  pointerWithin,
+  rectIntersection,
 } from "@dnd-kit/core";
 
 import {
-  SortableContext, useSortable, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove,
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+  verticalListSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, MoreVertical, Pencil, Trash2, GripVertical, FolderOpen, ArrowUp, ArrowDown, FileDown, Rows, Columns } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Plus,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  GripVertical,
+  FolderOpen,
+  ArrowUp,
+  ArrowDown,
+  FileDown,
+  Rows,
+  Columns,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ClientFilesSheet } from "@/components/ClientFilesSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useTasks, useColumns, useClients, useProfiles, useTaskTags, useTaskStatuses, useTaskTagLinks, useUserColumnOrder, useUserTaskOrder, useSubtasks, type Task, type KanbanColumn } from "@/hooks/use-data";
+import {
+  useTasks,
+  useColumns,
+  useClients,
+  useProfiles,
+  useTaskTags,
+  useTaskStatuses,
+  useTaskTagLinks,
+  useUserColumnOrder,
+  useUserTaskOrder,
+  useSubtasks,
+  type Task,
+  type KanbanColumn,
+} from "@/hooks/use-data";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
 import { TagManagerDialog } from "@/components/TagManagerDialog";
@@ -34,7 +91,18 @@ export const Route = createFileRoute("/_app/tasks/kanban")({
   component: KanbanPage,
 });
 
-function SortableTaskCard({ task, colId, onEdit, onDuplicate, clients, profiles, columns, tags, statuses, orientation }: any) {
+function SortableTaskCard({
+  task,
+  colId,
+  onEdit,
+  onDuplicate,
+  clients,
+  profiles,
+  columns,
+  tags,
+  statuses,
+  orientation,
+}: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "task", colId: colId ?? task.column_id },
@@ -69,7 +137,13 @@ const COMPLETED_COL_ID = "__completed__";
 type SortField = "position" | "due_date" | "created_at" | "tag" | "priority" | "status";
 type SortDirection = "asc" | "desc";
 
-function compareByField(field: SortField, a: any, b: any, tagNameForTask: Map<string, string>, statuses: any[]): number {
+function compareByField(
+  field: SortField,
+  a: any,
+  b: any,
+  tagNameForTask: Map<string, string>,
+  statuses: any[],
+): number {
   switch (field) {
     case "due_date":
       if (!a.due_date && !b.due_date) return 0;
@@ -105,14 +179,25 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
       <div className="mb-2 flex items-center gap-1.5 px-1">
         <span className="h-3 w-3 rounded-full bg-emerald-500" />
         <h3 className="font-semibold">Concluídas</h3>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600">{count}</span>
-        {!isH && <span className="ml-2 text-xs text-muted-foreground">Arraste tarefas aqui para concluir</span>}
+        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600">
+          {count}
+        </span>
+        {!isH && (
+          <span className="ml-2 text-xs text-muted-foreground">
+            Arraste tarefas aqui para concluir
+          </span>
+        )}
       </div>
-      <SortableContext items={taskIds} strategy={isH ? verticalListSortingStrategy : horizontalListSortingStrategy}>
+      <SortableContext
+        items={taskIds}
+        strategy={isH ? verticalListSortingStrategy : horizontalListSortingStrategy}
+      >
         <div
           ref={setNodeRef}
           className={`kanban-scroll rounded-lg border-2 border-dashed p-2 transition ${
-            isH ? "flex flex-col gap-2 overflow-y-auto" : "flex items-start gap-2 overflow-x-auto overflow-y-hidden"
+            isH
+              ? "flex flex-col gap-2 overflow-y-auto"
+              : "flex items-start gap-2 overflow-x-auto overflow-y-hidden"
           } ${isOver ? "border-emerald-500 bg-emerald-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}
           style={{ minHeight: isH ? 200 : 120, maxHeight: isH ? "calc(100vh - 360px)" : undefined }}
         >
@@ -123,10 +208,29 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
   );
 }
 
-function SortableColumn({ col, taskIds, children, onEdit, onDelete, onAdd, orientation, canManage }: any) {
+function SortableColumn({
+  col,
+  taskIds,
+  children,
+  onEdit,
+  onDelete,
+  onAdd,
+  orientation,
+  canManage,
+}: any) {
   const sortable = useSortable({ id: `col:${col.id}`, data: { type: "column", colId: col.id } });
-  const { setNodeRef: setSortRef, attributes, listeners, transform, transition, isDragging } = sortable;
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: `drop:${col.id}`, data: { type: "column-drop", colId: col.id } });
+  const {
+    setNodeRef: setSortRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = sortable;
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `drop:${col.id}`,
+    data: { type: "column-drop", colId: col.id },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -136,7 +240,11 @@ function SortableColumn({ col, taskIds, children, onEdit, onDelete, onAdd, orien
   const isH = orientation === "horizontal";
 
   return (
-    <div ref={setSortRef} style={style} className={isH ? "flex w-fit min-w-72 shrink-0 flex-col" : "flex w-full flex-col"}>
+    <div
+      ref={setSortRef}
+      style={style}
+      className={isH ? "flex w-fit min-w-72 shrink-0 flex-col" : "flex w-full flex-col"}
+    >
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
           <span
@@ -151,23 +259,40 @@ function SortableColumn({ col, taskIds, children, onEdit, onDelete, onAdd, orien
           <h3 className="font-semibold">{col.name}</h3>
         </div>
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAdd}><Plus className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+          </Button>
           {canManage && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-7 w-7">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem>
+                <DropdownMenuItem onClick={onEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
       </div>
-      <SortableContext items={taskIds} strategy={isH ? verticalListSortingStrategy : horizontalListSortingStrategy}>
+      <SortableContext
+        items={taskIds}
+        strategy={isH ? verticalListSortingStrategy : horizontalListSortingStrategy}
+      >
         <div
           ref={setDropRef}
           className={`kanban-scroll rounded-lg border-2 border-dashed border-l-4 p-2 transition ${
-            isH ? "flex flex-col gap-3 overflow-y-auto" : "flex items-start gap-4 overflow-x-auto overflow-y-hidden"
+            isH
+              ? "flex flex-col gap-3 overflow-y-auto"
+              : "flex items-start gap-4 overflow-x-auto overflow-y-hidden"
           } ${isOver ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}
           style={{
             minHeight: isH ? 200 : 120,
@@ -201,7 +326,8 @@ function KanbanPage() {
   const subtaskAssigneeTaskIds = useMemo(() => {
     const s = new Set<string>();
     if (!user?.id) return s;
-    for (const st of allSubtasks as any[]) if (st.assignee_id === user.id && st.task_id) s.add(st.task_id);
+    for (const st of allSubtasks as any[])
+      if (st.assignee_id === user.id && st.task_id) s.add(st.task_id);
     return s;
   }, [allSubtasks, user?.id]);
 
@@ -233,8 +359,14 @@ function KanbanPage() {
     return m;
   }, [userTaskOrder]);
   const [filters, setFilters] = useState<TaskFilterValue>({});
-  const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({ field: "position", direction: "asc" });
-  const [sort2, setSort2] = useState<{ field: SortField | "none"; direction: SortDirection }>({ field: "none", direction: "asc" });
+  const [sort, setSort] = useState<{ field: SortField; direction: SortDirection }>({
+    field: "position",
+    direction: "asc",
+  });
+  const [sort2, setSort2] = useState<{ field: SortField | "none"; direction: SortDirection }>({
+    field: "none",
+    direction: "asc",
+  });
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -243,8 +375,16 @@ function KanbanPage() {
   const [statusesOpen, setStatusesOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [completedRange, setCompletedRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
-  const [columnEditor, setColumnEditor] = useState<{ open: boolean; id: string | null; name: string; color: string }>({ open: false, id: null, name: "", color: "#1e3a8a" });
+  const [completedRange, setCompletedRange] = useState<{ start: string; end: string }>({
+    start: "",
+    end: "",
+  });
+  const [columnEditor, setColumnEditor] = useState<{
+    open: boolean;
+    id: string | null;
+    name: string;
+    color: string;
+  }>({ open: false, id: null, name: "", color: "#1e3a8a" });
 
   const completedStatus = useMemo(() => statuses.find((s) => s.is_completed) ?? null, [statuses]);
   const fallbackStatus = useMemo(() => statuses.find((s) => !s.is_completed) ?? null, [statuses]);
@@ -272,8 +412,10 @@ function KanbanPage() {
   }, [tagLinks, tags, tasks]);
 
   const completedTasks = useMemo(() => {
-    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
-    const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
+    const startToday = new Date();
+    startToday.setHours(0, 0, 0, 0);
+    const endToday = new Date();
+    endToday.setHours(23, 59, 59, 999);
     const hasRange = !!(completedRange.start || completedRange.end);
     let all = tasks.filter((t) => {
       if (t.status !== "done" && !t.completed_at) return false;
@@ -286,7 +428,11 @@ function KanbanPage() {
       // Padrão: apenas as concluídas de hoje
       return ref >= startToday && ref <= endToday;
     });
-    all = applyTaskFilters(all, filters, { userId: user?.id ?? null, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser });
+    all = applyTaskFilters(all, filters, {
+      userId: user?.id ?? null,
+      subtaskAssigneeTaskIds,
+      subtaskAssigneeTaskIdsByUser,
+    });
     all.sort((a, b) => {
       let cmp = 0;
       switch (sort.field) {
@@ -320,7 +466,9 @@ function KanbanPage() {
         }
         case "position":
         default: {
-          cmp = (b.completed_at ?? b.updated_at ?? "").localeCompare(a.completed_at ?? a.updated_at ?? "");
+          cmp = (b.completed_at ?? b.updated_at ?? "").localeCompare(
+            a.completed_at ?? a.updated_at ?? "",
+          );
           break;
         }
       }
@@ -328,13 +476,25 @@ function KanbanPage() {
         const c2 = compareByField(sort2.field as SortField, a, b, tagNameForTask, statuses);
         cmp = sort2.direction === "asc" ? c2 : -c2;
       }
-      if (cmp === 0) cmp = (b.completed_at ?? b.updated_at ?? "").localeCompare(a.completed_at ?? a.updated_at ?? "");
+      if (cmp === 0)
+        cmp = (b.completed_at ?? b.updated_at ?? "").localeCompare(
+          a.completed_at ?? a.updated_at ?? "",
+        );
       return sort.direction === "asc" ? cmp : -cmp;
     });
     return all;
-  }, [tasks, filters, sort, sort2, tagNameForTask, completedRange, statuses, user?.id, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser]);
-
-
+  }, [
+    tasks,
+    filters,
+    sort,
+    sort2,
+    tagNameForTask,
+    completedRange,
+    statuses,
+    user?.id,
+    subtaskAssigneeTaskIds,
+    subtaskAssigneeTaskIdsByUser,
+  ]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -343,7 +503,11 @@ function KanbanPage() {
 
   const filtered = useMemo(() => {
     let r = tasks.filter((t) => t.status !== "done" && !t.completed_at);
-    r = applyTaskFilters(r, filters, { userId: user?.id ?? null, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser });
+    r = applyTaskFilters(r, filters, {
+      userId: user?.id ?? null,
+      subtaskAssigneeTaskIds,
+      subtaskAssigneeTaskIdsByUser,
+    });
     return r;
   }, [tasks, filters, user?.id, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser]);
 
@@ -360,7 +524,8 @@ function KanbanPage() {
         if (aWasAssigned !== bWasAssigned) return aWasAssigned ? -1 : 1;
         if (aWasAssigned && bWasAssigned) {
           const priorityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
-          const priorityComparison = (priorityOrder[b.priority ?? ""] || 0) - (priorityOrder[a.priority ?? ""] || 0);
+          const priorityComparison =
+            (priorityOrder[b.priority ?? ""] || 0) - (priorityOrder[a.priority ?? ""] || 0);
           if (priorityComparison !== 0) return priorityComparison;
         }
       }
@@ -397,8 +562,12 @@ function KanbanPage() {
         }
         case "position":
         default: {
-          const ap = userTaskPos.has(a.id) ? (userTaskPos.get(a.id) as number) : (a.position ?? 0) + 100000;
-          const bp = userTaskPos.has(b.id) ? (userTaskPos.get(b.id) as number) : (b.position ?? 0) + 100000;
+          const ap = userTaskPos.has(a.id)
+            ? (userTaskPos.get(a.id) as number)
+            : (a.position ?? 0) + 100000;
+          const bp = userTaskPos.has(b.id)
+            ? (userTaskPos.get(b.id) as number)
+            : (b.position ?? 0) + 100000;
           cmp = ap - bp;
           break;
         }
@@ -408,8 +577,12 @@ function KanbanPage() {
         cmp = sort2.direction === "asc" ? c2 : -c2;
       }
       if (cmp === 0) {
-        const ap = userTaskPos.has(a.id) ? (userTaskPos.get(a.id) as number) : (a.position ?? 0) + 100000;
-        const bp = userTaskPos.has(b.id) ? (userTaskPos.get(b.id) as number) : (b.position ?? 0) + 100000;
+        const ap = userTaskPos.has(a.id)
+          ? (userTaskPos.get(a.id) as number)
+          : (a.position ?? 0) + 100000;
+        const bp = userTaskPos.has(b.id)
+          ? (userTaskPos.get(b.id) as number)
+          : (b.position ?? 0) + 100000;
         cmp = ap - bp;
       }
       return sort.direction === "asc" ? cmp : -cmp;
@@ -419,9 +592,9 @@ function KanbanPage() {
 
   const tasksByCol = useMemo(() => {
     const map = new Map<string, Task[]>();
-    columns.forEach(c => map.set(c.id, []));
+    columns.forEach((c) => map.set(c.id, []));
     const firstColId = columns[0]?.id;
-    sortedTasks.forEach(t => {
+    sortedTasks.forEach((t) => {
       if (t.column_id && map.has(t.column_id)) {
         map.get(t.column_id)!.push(t);
         return;
@@ -446,7 +619,8 @@ function KanbanPage() {
     }
 
     const pointerIntersections = pointerWithin(args);
-    const intersections = pointerIntersections.length > 0 ? pointerIntersections : rectIntersection(args);
+    const intersections =
+      pointerIntersections.length > 0 ? pointerIntersections : rectIntersection(args);
     const overId = getFirstCollision(intersections, "id");
 
     if (overId) {
@@ -495,10 +669,15 @@ function KanbanPage() {
       if (!user) return;
       const next = arrayMove(columns, oldIndex, newIndex);
       // Optimistic local order: refresh user_column_order cache so columns memo recomputes
-      qc.setQueryData(["user_column_order"], next.map((c, i) => ({ column_id: c.id, position: i })));
+      qc.setQueryData(
+        ["user_column_order"],
+        next.map((c, i) => ({ column_id: c.id, position: i })),
+      );
       // Persist per-user ordering only (does NOT affect other users)
       const rows = next.map((c, i) => ({ user_id: user.id, column_id: c.id, position: i }));
-      const { error } = await supabase.from("user_column_order").upsert(rows, { onConflict: "user_id,column_id" });
+      const { error } = await supabase
+        .from("user_column_order")
+        .upsert(rows, { onConflict: "user_id,column_id" });
       if (error) toast.error(error.message);
       qc.invalidateQueries({ queryKey: ["user_column_order"] });
       return;
@@ -543,7 +722,7 @@ function KanbanPage() {
       };
       if (completedStatus?.id) patch.status_id = completedStatus.id;
       qc.setQueryData<Task[]>(["tasks"], (curr = []) =>
-        curr.map((t) => (t.id === taskId ? { ...t, ...patch } as Task : t)),
+        curr.map((t) => (t.id === taskId ? ({ ...t, ...patch } as Task) : t)),
       );
       const { error } = await supabase.from("tasks").update(patch).eq("id", taskId);
       if (error) toast.error(error.message);
@@ -562,7 +741,7 @@ function KanbanPage() {
       if (fallbackStatus?.id) patch.status_id = fallbackStatus.id;
       else patch.status_id = null;
       qc.setQueryData<Task[]>(["tasks"], (curr = []) =>
-        curr.map((t) => (t.id === taskId ? { ...t, ...patch } as Task : t)),
+        curr.map((t) => (t.id === taskId ? ({ ...t, ...patch } as Task) : t)),
       );
       const { error } = await supabase.from("tasks").update(patch).eq("id", taskId);
       if (error) toast.error(error.message);
@@ -571,9 +750,8 @@ function KanbanPage() {
       return;
     }
 
-
     const sourceCol = task.column_id;
-    const sourceList = sourceCol ? tasksByCol.get(sourceCol) ?? [] : [];
+    const sourceList = sourceCol ? (tasksByCol.get(sourceCol) ?? []) : [];
     const targetList = tasksByCol.get(targetCol) ?? [];
 
     let nextTargetList: Task[];
@@ -592,7 +770,7 @@ function KanbanPage() {
     // Optimistic local: update task.column_id if it changed
     if (sourceCol !== targetCol) {
       qc.setQueryData<Task[]>(["tasks"], (curr = []) =>
-        curr.map((t) => (t.id === taskId ? { ...t, column_id: targetCol! } as Task : t)),
+        curr.map((t) => (t.id === taskId ? ({ ...t, column_id: targetCol! } as Task) : t)),
       );
     }
     // Optimistic per-user ordering for the target column
@@ -604,11 +782,16 @@ function KanbanPage() {
 
     // Persist: column change is GLOBAL; ordering is PER-USER
     if (sourceCol !== targetCol) {
-      const { error } = await supabase.from("tasks").update({ column_id: targetCol }).eq("id", taskId);
+      const { error } = await supabase
+        .from("tasks")
+        .update({ column_id: targetCol })
+        .eq("id", taskId);
       if (error) toast.error(error.message);
     }
     const rows = nextTargetList.map((t, i) => ({ user_id: user.id, task_id: t.id, position: i }));
-    const { error: ordErr } = await supabase.from("user_task_order").upsert(rows, { onConflict: "user_id,task_id" });
+    const { error: ordErr } = await supabase
+      .from("user_task_order")
+      .upsert(rows, { onConflict: "user_id,task_id" });
     if (ordErr) toast.error(ordErr.message);
     qc.invalidateQueries({ queryKey: ["tasks"] });
     qc.invalidateQueries({ queryKey: ["user_task_order"] });
@@ -626,13 +809,21 @@ function KanbanPage() {
   const saveColumn = async () => {
     if (!user) return;
     const name = columnEditor.name.trim();
-    if (!name) { toast.error("Informe um nome"); return; }
+    if (!name) {
+      toast.error("Informe um nome");
+      return;
+    }
     const color = /^#[0-9a-fA-F]{6}$/.test(columnEditor.color) ? columnEditor.color : "#1e3a8a";
     if (columnEditor.id) {
-      const { error } = await supabase.from("kanban_columns").update({ name, color }).eq("id", columnEditor.id);
+      const { error } = await supabase
+        .from("kanban_columns")
+        .update({ name, color })
+        .eq("id", columnEditor.id);
       if (error) return toast.error(error.message);
     } else {
-      const { error } = await supabase.from("kanban_columns").insert({ name, color, position: columns.length, created_by: user.id });
+      const { error } = await supabase
+        .from("kanban_columns")
+        .insert({ name, color, position: columns.length, created_by: user.id });
       if (error) return toast.error(error.message);
     }
     setColumnEditor({ open: false, id: null, name: "", color: "#1e3a8a" });
@@ -678,9 +869,16 @@ function KanbanPage() {
         .select("title, done, position")
         .eq("task_id", task.id);
       if (subs && subs.length > 0) {
-        await supabase.from("subtasks").insert(
-          subs.map((s) => ({ task_id: newTaskId, title: s.title, done: s.done, position: s.position }))
-        );
+        await supabase
+          .from("subtasks")
+          .insert(
+            subs.map((s) => ({
+              task_id: newTaskId,
+              title: s.title,
+              done: s.done,
+              position: s.position,
+            })),
+          );
       }
 
       // 3. Copiar comentários
@@ -689,9 +887,9 @@ function KanbanPage() {
         .select("body, author_id")
         .eq("task_id", task.id);
       if (coms && coms.length > 0) {
-        await supabase.from("comments").insert(
-          coms.map((c) => ({ task_id: newTaskId, body: c.body, author_id: c.author_id }))
-        );
+        await supabase
+          .from("comments")
+          .insert(coms.map((c) => ({ task_id: newTaskId, body: c.body, author_id: c.author_id })));
       }
 
       // 4. Copiar tags
@@ -700,9 +898,9 @@ function KanbanPage() {
         .select("tag_id")
         .eq("task_id", task.id);
       if (tagLinks && tagLinks.length > 0) {
-        await supabase.from("task_tag_links").insert(
-          tagLinks.map((t) => ({ task_id: newTaskId, tag_id: t.tag_id }))
-        );
+        await supabase
+          .from("task_tag_links")
+          .insert(tagLinks.map((t) => ({ task_id: newTaskId, tag_id: t.tag_id })));
       }
 
       // 5. Copiar anexos (arquivos no storage também)
@@ -759,8 +957,18 @@ function KanbanPage() {
     setExportingPdf(true);
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    const prioLabel: Record<string, string> = { low: "Baixa", medium: "Média", high: "Alta", urgent: "Urgente" };
-    const prioColor: Record<string, string> = { low: "#64748b", medium: "#2563eb", high: "#f59e0b", urgent: "#dc2626" };
+    const prioLabel: Record<string, string> = {
+      low: "Baixa",
+      medium: "Média",
+      high: "Alta",
+      urgent: "Urgente",
+    };
+    const prioColor: Record<string, string> = {
+      low: "#64748b",
+      medium: "#2563eb",
+      high: "#f59e0b",
+      urgent: "#dc2626",
+    };
 
     const tagsByTask = new Map<string, { name: string; color: string }[]>();
     tagLinks.forEach((l) => {
@@ -785,9 +993,16 @@ function KanbanPage() {
             ${client ? `<span class="meta-item">🏢 ${esc(client.name)}</span>` : ""}
             ${assignee ? `<span class="meta-item">👤 ${esc(assignee.full_name || assignee.email || "")}</span>` : ""}
           </div>
-          ${taskTags.length ? `<div class="tags">${taskTags
-            .map((tg) => `<span class="tag" style="background:${tg.color}20;color:${tg.color};border-color:${tg.color}55">${esc(tg.name)}</span>`)
-            .join("")}</div>` : ""}
+          ${
+            taskTags.length
+              ? `<div class="tags">${taskTags
+                  .map(
+                    (tg) =>
+                      `<span class="tag" style="background:${tg.color}20;color:${tg.color};border-color:${tg.color}55">${esc(tg.name)}</span>`,
+                  )
+                  .join("")}</div>`
+              : ""
+          }
         </div>`;
     };
 
@@ -803,13 +1018,14 @@ function KanbanPage() {
     const colsHtml = columns
       .map((c) => renderCol(c.name, c.color || "#1e3a8a", tasksByCol.get(c.id) ?? []))
       .join("");
-    const completedLabel = completedRange.start || completedRange.end
-      ? "Concluídas no período"
-      : filters.date === "completed"
-        ? "Concluídas"
-        : filters.date === "this_month"
-          ? "Concluídas no mês"
-          : "Concluídas hoje";
+    const completedLabel =
+      completedRange.start || completedRange.end
+        ? "Concluídas no período"
+        : filters.date === "completed"
+          ? "Concluídas"
+          : filters.date === "this_month"
+            ? "Concluídas no mês"
+            : "Concluídas hoje";
     const completedHtml = renderCol(completedLabel, "#10b981", completedTasks);
 
     const html = `<style>
@@ -843,7 +1059,10 @@ function KanbanPage() {
   </div>`;
 
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
       const wrapper = document.createElement("div");
       wrapper.style.position = "fixed";
       wrapper.style.left = "-10000px";
@@ -851,7 +1070,12 @@ function KanbanPage() {
       wrapper.innerHTML = html;
       document.body.appendChild(wrapper);
       const target = wrapper.querySelector(".kanban-pdf-root") as HTMLElement;
-      const canvas = await html2canvas(target, { backgroundColor: "#ffffff", scale: 2, logging: false, useCORS: true });
+      const canvas = await html2canvas(target, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      });
       wrapper.remove();
 
       const pdf = new jsPDF("landscape", "mm", "a4");
@@ -885,111 +1109,158 @@ function KanbanPage() {
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b bg-background p-4">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight">Kanban</h1>
+        <div className="flex items-center justify-end gap-4">
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void exportPdf()} disabled={exportingPdf}>
-              <FileDown className="mr-2 h-4 w-4" />{exportingPdf ? "Gerando…" : "Exportar PDF"}
+              <FileDown className="mr-2 h-4 w-4" />
+              {exportingPdf ? "Gerando…" : "Exportar PDF"}
             </Button>
             <Button variant="outline" onClick={() => setFilesOpen(true)}>
-              <FolderOpen className="mr-2 h-4 w-4" />Arquivos Cliente
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Arquivos Cliente
             </Button>
-            <Button variant="outline" onClick={() => setStatusesOpen(true)}>Status</Button>
-            <Button variant="outline" onClick={() => setTagsOpen(true)}>Tags</Button>
+            <Button variant="outline" onClick={() => setStatusesOpen(true)}>
+              Status
+            </Button>
+            <Button variant="outline" onClick={() => setTagsOpen(true)}>
+              Tags
+            </Button>
             {isAdmin && (
-              <Button variant="outline" onClick={addColumn}><Plus className="mr-2 h-4 w-4" />Coluna</Button>
+              <Button variant="outline" onClick={addColumn}>
+                <Plus className="mr-2 h-4 w-4" />
+                Coluna
+              </Button>
             )}
-            <Button onClick={() => { setEditTask(null); setDefaultCol(columns[0]?.id ?? null); setDialogOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />Tarefa
+            <Button
+              onClick={() => {
+                setEditTask(null);
+                setDefaultCol(columns[0]?.id ?? null);
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Tarefa
             </Button>
           </div>
         </div>
         <div className="mt-4 space-y-2">
-          <TaskFilters filters={filters} onChange={setFilters} />
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1.5"
-              onClick={() =>
-                updatePrefs.mutate({
-                  kanban_orientation: orientation === "horizontal" ? "vertical" : "horizontal",
-                })
-              }
-              title={orientation === "horizontal" ? "Mudar para vertical" : "Mudar para horizontal"}
-            >
-              {orientation === "horizontal" ? <Rows className="h-3.5 w-3.5" /> : <Columns className="h-3.5 w-3.5" />}
-              {orientation === "horizontal" ? "Vertical" : "Horizontal"}
-            </Button>
-            <CardFieldsPopover />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Concluídas no período</span>
-            <Input
-              type="date"
-              value={completedRange.start}
-              onChange={(e) => setCompletedRange((range) => ({ ...range, start: e.target.value }))}
-              className="h-8 w-40"
-            />
-            <span>até</span>
-            <Input
-              type="date"
-              value={completedRange.end}
-              onChange={(e) => setCompletedRange((range) => ({ ...range, end: e.target.value }))}
-              className="h-8 w-40"
-            />
-            {(completedRange.start || completedRange.end) ? (
-              <Button variant="ghost" size="sm" className="h-8" onClick={() => setCompletedRange({ start: "", end: "" })}>
-                Limpar período
-              </Button>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Ordenar:</span>
-            <Select value={sort.field} onValueChange={(v) => setSort((s) => ({ ...s, field: v as SortField }))}>
-              <SelectTrigger className="h-8 w-44"><SelectValue placeholder="1º critério" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="position">Posição (manual)</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-                <SelectItem value="priority">Prioridade</SelectItem>
-                <SelectItem value="due_date">Prazo</SelectItem>
-                <SelectItem value="created_at">Data de criação</SelectItem>
-                <SelectItem value="tag">Tag</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => setSort((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))}
-              title="Inverter direção"
-            >
-              {sort.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
-            </Button>
-            <span className="text-xs text-muted-foreground">então:</span>
-            <Select value={sort2.field} onValueChange={(v) => setSort2((s) => ({ ...s, field: v as SortField | "none" }))}>
-              <SelectTrigger className="h-8 w-44"><SelectValue placeholder="2º critério" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— nenhum —</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-                <SelectItem value="priority">Prioridade</SelectItem>
-                <SelectItem value="due_date">Prazo</SelectItem>
-                <SelectItem value="created_at">Data de criação</SelectItem>
-                <SelectItem value="tag">Tag</SelectItem>
-              </SelectContent>
-            </Select>
-            {sort2.field !== "none" && (
+          <TaskFilters filters={filters} onChange={setFilters}>
+            <div className="flex items-center justify-end gap-2">
               <Button
-                variant="outline"
                 size="sm"
-                className="h-8"
-                onClick={() => setSort2((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))}
-                title="Inverter direção secundária"
+                variant="outline"
+                className="h-8 gap-1.5"
+                onClick={() =>
+                  updatePrefs.mutate({
+                    kanban_orientation: orientation === "horizontal" ? "vertical" : "horizontal",
+                  })
+                }
+                title={orientation === "horizontal" ? "Mudar para vertical" : "Mudar para horizontal"}
               >
-                {sort2.direction === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                {orientation === "horizontal" ? <Rows className="h-3.5 w-3.5" /> : <Columns className="h-3.5 w-3.5" />}
+                {orientation === "horizontal" ? "Vertical" : "Horizontal"}
               </Button>
-            )}
-          </div>
+              <CardFieldsPopover />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Concluídas no período</span>
+                <Input
+                  type="date"
+                  value={completedRange.start}
+                  onChange={(e) =>
+                    setCompletedRange((range) => ({ ...range, start: e.target.value }))
+                  }
+                  className="h-8 w-40"
+                />
+                <span>até</span>
+                <Input
+                  type="date"
+                  value={completedRange.end}
+                  onChange={(e) =>
+                    setCompletedRange((range) => ({ ...range, end: e.target.value }))
+                  }
+                  className="h-8 w-40"
+                />
+                {completedRange.start || completedRange.end ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setCompletedRange({ start: "", end: "" })}
+                  >
+                    Limpar período
+                  </Button>
+                ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Ordenar:</span>
+                <Select
+                  value={sort.field}
+                  onValueChange={(v) => setSort((s) => ({ ...s, field: v as SortField }))}
+                >
+                  <SelectTrigger className="h-8 w-44">
+                    <SelectValue placeholder="1º critério" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="position">Posição (manual)</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                    <SelectItem value="priority">Prioridade</SelectItem>
+                    <SelectItem value="due_date">Prazo</SelectItem>
+                    <SelectItem value="created_at">Data de criação</SelectItem>
+                    <SelectItem value="tag">Tag</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() =>
+                    setSort((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
+                  }
+                  title="Inverter direção"
+                >
+                  {sort.direction === "asc" ? (
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+                <span className="text-xs text-muted-foreground">então:</span>
+                <Select
+                  value={sort2.field}
+                  onValueChange={(v) => setSort2((s) => ({ ...s, field: v as SortField | "none" }))}
+                >
+                  <SelectTrigger className="h-8 w-44">
+                    <SelectValue placeholder="2º critério" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— nenhum —</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                    <SelectItem value="priority">Prioridade</SelectItem>
+                    <SelectItem value="due_date">Prazo</SelectItem>
+                    <SelectItem value="created_at">Data de criação</SelectItem>
+                    <SelectItem value="tag">Tag</SelectItem>
+                  </SelectContent>
+                </Select>
+                {sort2.field !== "none" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() =>
+                      setSort2((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
+                    }
+                    title="Inverter direção secundária"
+                  >
+                    {sort2.direction === "asc" ? (
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+            </div>
+          </TaskFilters>
         </div>
       </header>
 
@@ -1006,10 +1277,21 @@ function KanbanPage() {
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveTask(null)}
         >
-
-          <SortableContext items={columnIds} strategy={orientation === "horizontal" ? horizontalListSortingStrategy : verticalListSortingStrategy}>
-            <div className={orientation === "horizontal" ? "flex flex-row items-start gap-4" : "flex flex-col gap-4"}>
-
+          <SortableContext
+            items={columnIds}
+            strategy={
+              orientation === "horizontal"
+                ? horizontalListSortingStrategy
+                : verticalListSortingStrategy
+            }
+          >
+            <div
+              className={
+                orientation === "horizontal"
+                  ? "flex flex-row items-start gap-4"
+                  : "flex flex-col gap-4"
+              }
+            >
               {columns.map((col) => {
                 const colTasks = tasksByCol.get(col.id) ?? [];
                 return (
@@ -1018,7 +1300,11 @@ function KanbanPage() {
                     col={col}
                     orientation={orientation}
                     taskIds={colTasks.map((t) => t.id)}
-                    onAdd={() => { setEditTask(null); setDefaultCol(col.id); setDialogOpen(true); }}
+                    onAdd={() => {
+                      setEditTask(null);
+                      setDefaultCol(col.id);
+                      setDialogOpen(true);
+                    }}
                     onEdit={() => renameColumn(col)}
                     onDelete={() => deleteColumn(col)}
                     canManage={isAdmin}
@@ -1033,7 +1319,10 @@ function KanbanPage() {
                         columns={columns}
                         tags={tags}
                         statuses={statuses}
-                        onEdit={() => { setEditTask(t); setDialogOpen(true); }}
+                        onEdit={() => {
+                          setEditTask(t);
+                          setDialogOpen(true);
+                        }}
                         onDuplicate={() => duplicateTask(t)}
                       />
                     ))}
@@ -1050,21 +1339,26 @@ function KanbanPage() {
                   <div className="flex w-full items-center justify-center text-xs text-muted-foreground">
                     Nenhuma tarefa concluída ainda.
                   </div>
-                ) : completedTasks.map((t) => (
-                  <SortableTaskCard
-                    key={t.id}
-                    task={t}
-                    colId={COMPLETED_COL_ID}
-                    orientation={orientation}
-                    clients={clients}
-                    profiles={profiles}
-                    columns={columns}
-                    tags={tags}
-                    statuses={statuses}
-                    onEdit={() => { setEditTask(t); setDialogOpen(true); }}
-                    onDuplicate={() => duplicateTask(t)}
-                  />
-                ))}
+                ) : (
+                  completedTasks.map((t) => (
+                    <SortableTaskCard
+                      key={t.id}
+                      task={t}
+                      colId={COMPLETED_COL_ID}
+                      orientation={orientation}
+                      clients={clients}
+                      profiles={profiles}
+                      columns={columns}
+                      tags={tags}
+                      statuses={statuses}
+                      onEdit={() => {
+                        setEditTask(t);
+                        setDialogOpen(true);
+                      }}
+                      onDuplicate={() => duplicateTask(t)}
+                    />
+                  ))
+                )}
               </CompletedColumn>
             </div>
           </SortableContext>
@@ -1085,12 +1379,22 @@ function KanbanPage() {
         </DndContext>
       </KanbanScrollArea>
 
-      <TaskDialog open={dialogOpen} onOpenChange={setDialogOpen} task={editTask} defaultColumnId={defaultCol} />
+      <TaskDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        task={editTask}
+        defaultColumnId={defaultCol}
+      />
       <TagManagerDialog open={tagsOpen} onOpenChange={setTagsOpen} />
       <StatusManagerDialog open={statusesOpen} onOpenChange={setStatusesOpen} />
       <ClientFilesSheet open={filesOpen} onOpenChange={setFilesOpen} />
 
-      <Dialog open={columnEditor.open} onOpenChange={(o) => { if (!o) setColumnEditor((c) => ({ ...c, open: false })); }}>
+      <Dialog
+        open={columnEditor.open}
+        onOpenChange={(o) => {
+          if (!o) setColumnEditor((c) => ({ ...c, open: false }));
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{columnEditor.id ? "Editar coluna" : "Nova coluna"}</DialogTitle>
@@ -1124,7 +1428,16 @@ function KanbanPage() {
                 />
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {["#1e3a8a", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#ec4899", "#64748b"].map((c) => (
+                {[
+                  "#1e3a8a",
+                  "#0ea5e9",
+                  "#10b981",
+                  "#f59e0b",
+                  "#ef4444",
+                  "#a855f7",
+                  "#ec4899",
+                  "#64748b",
+                ].map((c) => (
                   <button
                     key={c}
                     type="button"
@@ -1138,15 +1451,18 @@ function KanbanPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setColumnEditor((c) => ({ ...c, open: false }))}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => setColumnEditor((c) => ({ ...c, open: false }))}
+            >
+              Cancelar
+            </Button>
             <Button onClick={() => void saveColumn()}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
-
 }
 
 function KanbanScrollArea({
@@ -1179,13 +1495,19 @@ function KanbanScrollArea({
 
   // Sincroniza scroll entre barra de cima e container principal
   const onMainScroll = () => {
-    if (syncing.current === "top") { syncing.current = null; return; }
+    if (syncing.current === "top") {
+      syncing.current = null;
+      return;
+    }
     if (!topRef.current || !mainRef.current) return;
     syncing.current = "main";
     topRef.current.scrollLeft = mainRef.current.scrollLeft;
   };
   const onTopScroll = () => {
-    if (syncing.current === "main") { syncing.current = null; return; }
+    if (syncing.current === "main") {
+      syncing.current = null;
+      return;
+    }
     if (!topRef.current || !mainRef.current) return;
     syncing.current = "top";
     mainRef.current.scrollLeft = topRef.current.scrollLeft;
@@ -1201,7 +1523,11 @@ function KanbanScrollArea({
       // ignora se o alvo está dentro de uma coluna que tem rolagem vertical útil
       const target = e.target as HTMLElement | null;
       const column = target?.closest(".kanban-scroll");
-      if (column && column !== el && (column as HTMLElement).scrollHeight > (column as HTMLElement).clientHeight + 1) {
+      if (
+        column &&
+        column !== el &&
+        (column as HTMLElement).scrollHeight > (column as HTMLElement).clientHeight + 1
+      ) {
         return; // deixa o navegador rolar a coluna
       }
       if (e.deltaY !== 0 && e.deltaX === 0) {
@@ -1225,11 +1551,7 @@ function KanbanScrollArea({
           <div style={{ width: innerWidth, height: 1 }} />
         </div>
       ) : null}
-      <div
-        ref={mainRef}
-        onScroll={onMainScroll}
-        className="kanban-scroll flex-1 overflow-auto p-4"
-      >
+      <div ref={mainRef} onScroll={onMainScroll} className="kanban-scroll flex-1 overflow-auto p-4">
         {children}
       </div>
     </div>

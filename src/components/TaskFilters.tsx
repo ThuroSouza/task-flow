@@ -1,11 +1,25 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, X, Users, UserCheck, PenSquare, Filter as FilterIcon, RotateCcw } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ChevronDown,
+  X,
+  Users,
+  UserCheck,
+  PenSquare,
+  Filter as FilterIcon,
+  RotateCcw,
+} from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useClients, useProfiles, useTaskStatuses } from "@/hooks/use-data";
 
 import { dateFilterLabels, matchDateFilter, type DateFilter } from "@/lib/task-utils";
@@ -23,10 +37,19 @@ interface Filters {
 }
 
 const DATE_OPTIONS: DateFilter[] = [
-  "all", "today", "due_today", "tomorrow", "this_week", "this_month", "overdue", "no_due", "pending", "completed",
+  "all",
+  "today",
+  "due_today",
+  "tomorrow",
+  "this_week",
+  "this_month",
+  "overdue",
+  "no_due",
+  "pending",
+  "completed",
 ];
 
-export function TaskFilters({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
+export function TaskFilters({ filters, onChange, children }: { filters: Filters; onChange: (f: Filters) => void; children?: ReactNode }) {
   const { data: clients } = useClients();
   const { data: profiles } = useProfiles();
   const { data: statuses = [] } = useTaskStatuses();
@@ -69,17 +92,19 @@ export function TaskFilters({ filters, onChange }: { filters: Filters; onChange:
 
   const allSelected = (clients?.length ?? 0) > 0 && selectedClients.length === clients?.length;
 
-  const clientsLabel = selectedClients.length === 0
-    ? "Clientes"
-    : selectedClients.length === 1
-      ? clients?.find((c) => c.id === selectedClients[0])?.name ?? "1 cliente"
-      : `${selectedClients.length} clientes`;
+  const clientsLabel =
+    selectedClients.length === 0
+      ? "Clientes"
+      : selectedClients.length === 1
+        ? (clients?.find((c) => c.id === selectedClients[0])?.name ?? "1 cliente")
+        : `${selectedClients.length} clientes`;
 
-  const statusLabel = statusIds.length === 0
-    ? "Status"
-    : statusIds.length === 1
-      ? statuses.find((s) => s.id === statusIds[0])?.name ?? "1 status"
-      : `${statusIds.length} status`;
+  const statusLabel =
+    statusIds.length === 0
+      ? "Status"
+      : statusIds.length === 1
+        ? (statuses.find((s) => s.id === statusIds[0])?.name ?? "1 status")
+        : `${statusIds.length} status`;
 
   const activeCount = [
     scope !== "all",
@@ -93,122 +118,192 @@ export function TaskFilters({ filters, onChange }: { filters: Filters; onChange:
   const clearAll = () => onChange({});
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2">
-      {/* Scope segmented */}
-      <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
-        <ScopeBtn active={scope === "all"} onClick={() => onChange({ ...filters, scope: undefined })} icon={<Users className="h-3.5 w-3.5" />}>Todas</ScopeBtn>
-        <ScopeBtn active={scope === "mine"} onClick={() => onChange({ ...filters, scope: "mine" })} icon={<UserCheck className="h-3.5 w-3.5" />}>Atribuídas a mim</ScopeBtn>
-        <ScopeBtn active={scope === "created"} onClick={() => onChange({ ...filters, scope: "created" })} icon={<PenSquare className="h-3.5 w-3.5" />}>Criadas por mim</ScopeBtn>
-      </div>
-
-      {/* Date compact select */}
-      <Select value={dateVal} onValueChange={(v) => onChange({ ...filters, date: v as DateFilter })}>
-        <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {DATE_OPTIONS.map((d) => (
-            <SelectItem key={d} value={d}>{dateFilterLabels[d]}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Status multi */}
-      <Popover open={statusOpen} onOpenChange={setStatusOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 justify-between gap-2 font-normal">
-            <span className="truncate max-w-32">{statusLabel}</span>
-            {statusIds.length > 0 && <Badge variant="secondary" className="h-5 px-1.5">{statusIds.length}</Badge>}
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-56 p-2">
-          <div className="flex items-center justify-between mb-1 px-1">
-            <span className="text-xs text-muted-foreground">Filtrar por status</span>
-            {statusIds.length > 0 && (
-              <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => onChange({ ...filters, statusIds: undefined })}>
-                Limpar
-              </button>
-            )}
+    <>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2">
+          {/* Scope segmented */}
+          <div>
+            <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+              <ScopeBtn active={scope === "all"} onClick={() => onChange({ ...filters, scope: undefined })} icon={<Users className="h-3.5 w-3.5" />}>Todas</ScopeBtn>
+              <ScopeBtn active={scope === "mine"} onClick={() => onChange({ ...filters, scope: "mine" })} icon={<UserCheck className="h-3.5 w-3.5" />}>Atribuídas a mim</ScopeBtn>
+              <ScopeBtn active={scope === "created"} onClick={() => onChange({ ...filters, scope: "created" })} icon={<PenSquare className="h-3.5 w-3.5" />}>Criadas por mim</ScopeBtn>
+            </div>
           </div>
-          <div className="max-h-64 overflow-y-auto">
-            {statuses.length === 0 && <div className="px-2 py-4 text-center text-sm text-muted-foreground">Sem status</div>}
-            {statuses.map((s) => (
-              <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
-                <Checkbox checked={statusIds.includes(s.id)} onCheckedChange={() => toggleStatus(s.id)} />
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-                <span className="truncate">{s.name}</span>
-              </label>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
 
-      {/* Clients multi */}
-      <Popover open={clientsOpen} onOpenChange={setClientsOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 justify-between gap-2 font-normal">
-            <span className="truncate max-w-40">{clientsLabel}</span>
-            {selectedClients.length > 0 && <Badge variant="secondary" className="h-5 px-1.5">{selectedClients.length}</Badge>}
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 p-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8" />
-            {selectedClients.length > 0 && (
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setSelectedClients([])} title="Limpar seleção">
-                <X className="h-4 w-4" />
+          <div>
+
+          {/* Date compact select */}
+          <Select
+            value={dateVal}
+            onValueChange={(v) => onChange({ ...filters, date: v as DateFilter })}
+          >
+            <SelectTrigger className="h-8 w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_OPTIONS.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {dateFilterLabels[d]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          </div>
+
+          {/* Status multi */}
+              <div className="flex flex-wrap gap-2">
+          <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 justify-between gap-2 font-normal">
+                <span className="truncate max-w-32">{statusLabel}</span>
+                {statusIds.length > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5">
+                    {statusIds.length}
+                  </Badge>
+                )}
+                <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
-            )}
-          </div>
-          <div className="flex items-center justify-between px-2 py-1.5 border-b mb-1">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={(v) => {
-                  if (v) setSelectedClients((clients ?? []).map((c) => c.id));
-                  else setSelectedClients([]);
-                }}
-              />
-              <span>Selecionar todos</span>
-            </label>
-            <span className="text-xs text-muted-foreground">{selectedClients.length}/{clients?.length ?? 0}</span>
-          </div>
-          <div className="max-h-64 overflow-y-auto">
-            {filteredClients.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-muted-foreground text-center">Nenhum cliente</div>
-            ) : (
-              filteredClients.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
-                  <Checkbox checked={selectedClients.includes(c.id)} onCheckedChange={() => toggleClient(c.id)} />
-                  <span className="truncate">{c.name}</span>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-56 p-2">
+              <div className="flex items-center justify-between mb-1 px-1">
+                <span className="text-xs text-muted-foreground">Filtrar por status</span>
+                {statusIds.length > 0 && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => onChange({ ...filters, statusIds: undefined })}
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {statuses.length === 0 && (
+                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                    Sem status
+                  </div>
+                )}
+                {statuses.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                  >
+                    <Checkbox
+                      checked={statusIds.includes(s.id)}
+                      onCheckedChange={() => toggleStatus(s.id)}
+                    />
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
+                    <span className="truncate">{s.name}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Clients multi */}
+          <Popover open={clientsOpen} onOpenChange={setClientsOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 justify-between gap-2 font-normal">
+                <span className="truncate max-w-40">{clientsLabel}</span>
+                {selectedClients.length > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5">
+                    {selectedClients.length}
+                  </Badge>
+                )}
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8"
+                />
+                {selectedClients.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => setSelectedClients([])}
+                    title="Limpar seleção"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center justify-between px-2 py-1.5 border-b mb-1">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(v) => {
+                      if (v) setSelectedClients((clients ?? []).map((c) => c.id));
+                      else setSelectedClients([]);
+                    }}
+                  />
+                  <span>Selecionar todos</span>
                 </label>
-              ))
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+                <span className="text-xs text-muted-foreground">
+                  {selectedClients.length}/{clients?.length ?? 0}
+                </span>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {filteredClients.length === 0 ? (
+                  <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                    Nenhum cliente
+                  </div>
+                ) : (
+                  filteredClients.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={selectedClients.includes(c.id)}
+                        onCheckedChange={() => toggleClient(c.id)}
+                      />
+                      <span className="truncate">{c.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-      {/* Assignee */}
-      <Select value={filters.assignee ?? "all"} onValueChange={(v) => onChange({ ...filters, assignee: v === "all" ? undefined : v })}>
-        <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Responsável" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos responsáveis</SelectItem>
-          {profiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>)}
-        </SelectContent>
-      </Select>
+          {/* Assignee */}
+          <Select
+            value={filters.assignee ?? "all"}
+            onValueChange={(v) => onChange({ ...filters, assignee: v === "all" ? undefined : v })}
+          >
+            <SelectTrigger className="h-8 w-40">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos responsáveis</SelectItem>
+              {profiles?.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.full_name || p.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      {/* Priority */}
-      <Select value={filters.priority ?? "all"} onValueChange={(v) => onChange({ ...filters, priority: v === "all" ? undefined : v })}>
-        <SelectTrigger className="h-8 w-32"><SelectValue placeholder="Prioridade" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas prioridades</SelectItem>
-          <SelectItem value="low">Baixa</SelectItem>
-          <SelectItem value="medium">Média</SelectItem>
-          <SelectItem value="high">Alta</SelectItem>
-          <SelectItem value="urgent">Urgente</SelectItem>
-        </SelectContent>
-      </Select>
-
+          {/* Priority */}
+          <Select
+            value={filters.priority ?? "all"}
+            onValueChange={(v) => onChange({ ...filters, priority: v === "all" ? undefined : v })}
+          >
+            <SelectTrigger className="h-8 w-32">
+              <SelectValue placeholder="Prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas prioridades</SelectItem>
+              <SelectItem value="low">Baixa</SelectItem>
+              <SelectItem value="medium">Média</SelectItem>
+              <SelectItem value="high">Alta</SelectItem>
+              <SelectItem value="urgent">Urgente</SelectItem>
+            </SelectContent>
+          </Select>
+              </div>
       {activeCount > 0 && (
         <Button size="sm" variant="ghost" className="h-8 ml-auto text-muted-foreground" onClick={clearAll}>
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
@@ -221,17 +316,31 @@ export function TaskFilters({ filters, onChange }: { filters: Filters; onChange:
           Nenhum filtro
         </div>
       )}
-    </div>
+      </div>
+      {children}
+    </>
   );
 }
 
-function ScopeBtn({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+function ScopeBtn({
+  active,
+  onClick,
+  icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${
-        active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}
@@ -240,17 +349,31 @@ function ScopeBtn({ active, onClick, icon, children }: { active: boolean; onClic
   );
 }
 
-export function applyTaskFilters<T extends { id: string; client_id: string | null; assignee_id: string | null; priority: string | null; status_id?: string | null; created_by?: string | null; due_date: string | null; status: string | null; completed_at: string | null; }>(
-  tasks: T[], f: Filters, opts?: { userId?: string | null; subtaskAssigneeTaskIds?: Set<string> | null; subtaskAssigneeTaskIdsByUser?: Map<string, Set<string>> | null },
+export function applyTaskFilters<
+  T extends {
+    id: string;
+    client_id: string | null;
+    assignee_id: string | null;
+    priority: string | null;
+    status_id?: string | null;
+    created_by?: string | null;
+    due_date: string | null;
+    status: string | null;
+    completed_at: string | null;
+  },
+>(
+  tasks: T[],
+  f: Filters,
+  opts?: {
+    userId?: string | null;
+    subtaskAssigneeTaskIds?: Set<string> | null;
+    subtaskAssigneeTaskIdsByUser?: Map<string, Set<string>> | null;
+  },
 ) {
-  const clientIds = f.clients && f.clients.length > 0
-    ? f.clients
-    : f.client
-      ? [f.client]
-      : null;
+  const clientIds = f.clients && f.clients.length > 0 ? f.clients : f.client ? [f.client] : null;
   const uid = opts?.userId ?? null;
   const subIds = opts?.subtaskAssigneeTaskIds ?? null;
-  return tasks.filter(t => {
+  return tasks.filter((t) => {
     if (f.scope === "mine") {
       if (!uid) return false;
       const mine = t.assignee_id === uid || (subIds ? subIds.has(t.id) : false);
@@ -273,4 +396,3 @@ export function applyTaskFilters<T extends { id: string; client_id: string | nul
 }
 
 export type { Filters as TaskFilterValue };
-
