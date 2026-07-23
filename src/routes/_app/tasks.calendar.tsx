@@ -15,7 +15,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTasks, useClients, useSubtasks, type Task } from "@/hooks/use-data";
+import { useTasks, useClients, useSubtasks, useTaskCollaborators, type Task } from "@/hooks/use-data";
 import { useAuth } from "@/hooks/use-auth";
 import { TaskFilters, applyTaskFilters, type TaskFilterValue } from "@/components/TaskFilters";
 import { TaskDialog } from "@/components/TaskDialog";
@@ -28,6 +28,7 @@ function CalendarPage() {
   const { data: tasks = [] } = useTasks();
   const { data: clients = [] } = useClients();
   const { data: subtasks = [] } = useSubtasks();
+  const { data: collaborators = [] } = useTaskCollaborators();
   const { user } = useAuth();
   const [cursor, setCursor] = useState(new Date());
   const [filters, setFilters] = useState<TaskFilterValue>({});
@@ -59,14 +60,20 @@ function CalendarPage() {
     return map;
   }, [subtasks]);
 
+  const collaboratorTaskIds = useMemo(
+    () => new Set(collaborators.filter((collaborator) => collaborator.collaborator_id === user?.id).map((collaborator) => collaborator.task_id)),
+    [collaborators, user?.id],
+  );
+
   const visible = useMemo(
     () =>
       applyTaskFilters(tasks, filters, {
         userId: user?.id ?? null,
         subtaskAssigneeTaskIds,
+        collaboratorTaskIds,
         subtaskAssigneeTaskIdsByUser,
       }),
-    [tasks, filters, user?.id, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser],
+    [tasks, filters, user?.id, subtaskAssigneeTaskIds, collaboratorTaskIds, subtaskAssigneeTaskIdsByUser],
   );
 
   const subtaskDueDatesByTask = useMemo(() => {

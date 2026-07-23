@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { Mark, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
@@ -8,6 +9,7 @@ import {
   Eraser,
   Bold,
   Italic,
+  Underline,
   Strikethrough,
   List,
   ListOrdered,
@@ -20,6 +22,32 @@ import {
   Redo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const UnderlineMark = Mark.create({
+  name: "underline",
+  parseHTML() {
+    return [{ tag: "u" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["u", mergeAttributes(HTMLAttributes), 0];
+  },
+  addCommands() {
+    return {
+      setUnderline:
+        () =>
+        ({ commands }) =>
+          commands.setMark(this.name),
+      toggleUnderline:
+        () =>
+        ({ commands }) =>
+          commands.toggleMark(this.name),
+      unsetUnderline:
+        () =>
+        ({ commands }) =>
+          commands.unsetMark(this.name),
+    };
+  },
+});
 
 interface Props {
   value: string;
@@ -74,6 +102,9 @@ function Toolbar({ editor }: { editor: Editor }) {
       </ToolbarBtn>
       <ToolbarBtn title="Itálico (Ctrl+I)" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
         <Italic className="h-3 w-3" />
+      </ToolbarBtn>
+      <ToolbarBtn title="Sublinhado" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <Underline className="h-3 w-3" />
       </ToolbarBtn>
       <ToolbarBtn title="Tachado" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
         <Strikethrough className="h-3 w-3" />
@@ -164,6 +195,7 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
+      UnderlineMark,
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { class: "underline text-primary" } }),
       Highlight.configure({ multicolor: true }),
     ],
@@ -227,19 +259,31 @@ export function RichTextView({
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }) {
-  const looksLikeHtml = /<\/?(p|h[1-6]|ul|ol|li|strong|em|code|blockquote|a|br|s|hr)\b/i.test(html);
+  const looksLikeHtml = /<\/?(p|h[1-6]|ul|ol|li|strong|em|u|code|blockquote|a|br|s|hr)\b/i.test(html);
   if (!looksLikeHtml) {
+    const formattedHtml = html
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, "$1<em>$2</em>")
+      .replace(/\r?\n/g, "<br />");
     return (
-      <div onClick={onClick} className={cn("whitespace-pre-wrap text-xs leading-snug [overflow-wrap:anywhere]", className)}>
-        {html}
-      </div>
+      <div
+        onClick={onClick}
+        className={cn(
+          "text-xs leading-snug [overflow-wrap:anywhere] [&_strong]:font-bold [&_em]:italic [&_u]:underline",
+          className,
+        )}
+        dangerouslySetInnerHTML={{ __html: formattedHtml }}
+      />
     );
   }
   return (
     <div
       onClick={onClick}
       className={cn(
-        "tiptap prose prose-sm dark:prose-invert max-w-none text-xs leading-snug [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_h2]:text-sm [&_h3]:text-xs [&_a]:underline [&_a]:text-primary [&_code]:rounded [&_code]:bg-muted [&_code]:px-1",
+        "tiptap prose prose-sm dark:prose-invert max-w-none text-xs leading-snug [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_h2]:text-sm [&_h3]:text-xs [&_a]:underline [&_a]:text-primary [&_u]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1",
         className,
       )}
       dangerouslySetInnerHTML={{ __html: html }}

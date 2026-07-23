@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   DndContext,
   type CollisionDetection,
@@ -71,6 +71,7 @@ import {
   useTaskTags,
   useTaskStatuses,
   useTaskTagLinks,
+  useTaskCollaborators,
   useUserColumnOrder,
   useUserTaskOrder,
   useSubtasks,
@@ -80,7 +81,6 @@ import {
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDialog } from "@/components/TaskDialog";
 import { TagManagerDialog } from "@/components/TagManagerDialog";
-import { StatusManagerDialog } from "@/components/StatusManagerDialog";
 import { TaskFilters, applyTaskFilters, type TaskFilterValue } from "@/components/TaskFilters";
 import { CardFieldsPopover } from "@/components/CardFieldsPopover";
 import { useBoardPreferences, useUpdateBoardPreferences } from "@/hooks/use-board-preferences";
@@ -101,6 +101,7 @@ function SortableTaskCard({
   columns,
   tags,
   statuses,
+  collaborators,
   orientation,
 }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -116,7 +117,7 @@ function SortableTaskCard({
   } as CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style} className="w-72 min-w-0 shrink-0">
+    <div ref={setNodeRef} style={style} className="w-72 max-w-full min-w-0 shrink-0">
       <TaskCard
         task={task}
         columns={columns}
@@ -124,6 +125,7 @@ function SortableTaskCard({
         profiles={profiles}
         tags={tags}
         statuses={statuses}
+        collaborators={collaborators}
         onEdit={onEdit}
         onDuplicate={onDuplicate}
         dragHandleProps={{ ...attributes, ...listeners }}
@@ -179,7 +181,7 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
       <div className="mb-2 flex items-center gap-1.5 px-1">
         <span className="h-3 w-3 rounded-full bg-emerald-500" />
         <h3 className="font-semibold">Concluídas</h3>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600">
+        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-black">
           {count}
         </span>
         {!isH && (
@@ -194,12 +196,12 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
       >
         <div
           ref={setNodeRef}
-          className={`kanban-scroll rounded-lg border-2 border-solid p-2 transition ${
+          className={`rounded-lg border-2 border-solid p-2 transition ${
             isH
-              ? "flex flex-col gap-2 overflow-y-auto"
-              : "flex items-start gap-2 overflow-x-auto overflow-y-hidden"
+              ? "flex flex-col gap-2"
+              : "flex flex-wrap items-start gap-2"
           } ${isOver ? "border-emerald-500 bg-emerald-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}
-          style={{ minHeight: isH ? 200 : 120, maxHeight: isH ? "calc(100vh - 360px)" : undefined }}
+          style={{ minHeight: isH ? 200 : 120 }}
         >
           {children}
         </div>
@@ -211,6 +213,7 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
 function SortableColumn({
   col,
   taskIds,
+  count,
   children,
   onEdit,
   onDelete,
@@ -247,16 +250,27 @@ function SortableColumn({
     >
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
-          <span
-            {...attributes}
-            {...listeners}
-            className="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing"
-            title="Arrastar coluna"
-          >
-            <GripVertical className="h-4 w-4" />
-          </span>
+          {canManage && (
+            <span
+              {...attributes}
+              {...listeners}
+              className="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing"
+              title="Arrastar coluna"
+            >
+              <GripVertical className="h-4 w-4" />
+            </span>
+          )}
           <span className="h-3 w-3 rounded-full" style={{ background: col.color || "#1e3a8a" }} />
           <h3 className="font-semibold">{col.name}</h3>
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-medium"
+            style={{
+              color: "#000000",
+              backgroundColor: `${col.color || "#1e3a8a"}26`,
+            }}
+          >
+            {count}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAdd}>
@@ -289,14 +303,13 @@ function SortableColumn({
       >
         <div
           ref={setDropRef}
-          className={`kanban-scroll rounded-lg border-2 border-solid border-l-4 p-2 transition ${
+          className={`rounded-lg border-2 border-solid border-l-4 p-2 transition ${
             isH
-              ? "flex flex-col gap-3 overflow-y-auto"
-              : "flex items-start gap-4 overflow-x-auto overflow-y-hidden"
+              ? "flex flex-col gap-3"
+              : "flex flex-wrap items-start gap-4"
           } ${isOver ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}
           style={{
             minHeight: isH ? 200 : 120,
-            maxHeight: isH ? "calc(100vh - 360px)" : undefined,
             borderLeftColor: col.color || "#1e3a8a",
           }}
         >
@@ -318,6 +331,11 @@ function KanbanPage() {
   const { data: profiles = [] } = useProfiles();
   const { data: tags = [] } = useTaskTags();
   const { data: statuses = [] } = useTaskStatuses();
+  const { data: collaborators = [] } = useTaskCollaborators();
+  const collaboratorTaskIds = useMemo(
+    () => new Set(collaborators.filter((collaborator) => collaborator.collaborator_id === user?.id).map((collaborator) => collaborator.task_id)),
+    [collaborators, user?.id],
+  );
   const { data: boardPrefs } = useBoardPreferences();
   const { data: allSubtasks = [] } = useSubtasks();
   const updatePrefs = useUpdateBoardPreferences();
@@ -372,7 +390,6 @@ function KanbanPage() {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [defaultCol, setDefaultCol] = useState<string | null>(null);
   const [tagsOpen, setTagsOpen] = useState(false);
-  const [statusesOpen, setStatusesOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [completedRange, setCompletedRange] = useState<{ start: string; end: string }>({
@@ -431,6 +448,7 @@ function KanbanPage() {
     all = applyTaskFilters(all, filters, {
       userId: user?.id ?? null,
       subtaskAssigneeTaskIds,
+      collaboratorTaskIds,
       subtaskAssigneeTaskIdsByUser,
     });
     all.sort((a, b) => {
@@ -493,6 +511,7 @@ function KanbanPage() {
     statuses,
     user?.id,
     subtaskAssigneeTaskIds,
+    collaboratorTaskIds,
     subtaskAssigneeTaskIdsByUser,
   ]);
 
@@ -506,10 +525,11 @@ function KanbanPage() {
     r = applyTaskFilters(r, filters, {
       userId: user?.id ?? null,
       subtaskAssigneeTaskIds,
+      collaboratorTaskIds,
       subtaskAssigneeTaskIdsByUser,
     });
     return r;
-  }, [tasks, filters, user?.id, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser]);
+  }, [tasks, filters, user?.id, subtaskAssigneeTaskIds, collaboratorTaskIds, subtaskAssigneeTaskIdsByUser]);
 
   const sortedTasks = useMemo(() => {
     const r = [...filtered];
@@ -661,6 +681,10 @@ function KanbanPage() {
     if (!e.over) return;
 
     if (activeType === "column") {
+      if (!isAdmin) {
+        toast.error("Apenas administradores podem reordenar as colunas");
+        return;
+      }
       const overType = e.over.data.current?.type;
       if (overType !== "column") return;
       const oldIndex = columns.findIndex((c) => `col:${c.id}` === e.active.id);
@@ -1107,8 +1131,8 @@ function KanbanPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="border-b bg-background p-4">
+    <div className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col md:h-[calc(100dvh-49px)]">
+      <header className="shrink-0 border-b bg-background p-4">
         <div className="flex items-center justify-end gap-4">
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void exportPdf()} disabled={exportingPdf}>
@@ -1119,11 +1143,8 @@ function KanbanPage() {
               <FolderOpen className="mr-2 h-4 w-4" />
               Arquivos Cliente
             </Button>
-            <Button variant="outline" onClick={() => setStatusesOpen(true)}>
-              Status
-            </Button>
             <Button variant="outline" onClick={() => setTagsOpen(true)}>
-              Tags
+              Etiquetas
             </Button>
             {isAdmin && (
               <Button variant="outline" onClick={addColumn}>
@@ -1203,7 +1224,6 @@ function KanbanPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="position">Posição (manual)</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
                     <SelectItem value="priority">Prioridade</SelectItem>
                     <SelectItem value="due_date">Prazo</SelectItem>
                     <SelectItem value="created_at">Data de criação</SelectItem>
@@ -1235,7 +1255,6 @@ function KanbanPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— nenhum —</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
                     <SelectItem value="priority">Prioridade</SelectItem>
                     <SelectItem value="due_date">Prazo</SelectItem>
                     <SelectItem value="created_at">Data de criação</SelectItem>
@@ -1300,6 +1319,7 @@ function KanbanPage() {
                     col={col}
                     orientation={orientation}
                     taskIds={colTasks.map((t) => t.id)}
+                    count={colTasks.length}
                     onAdd={() => {
                       setEditTask(null);
                       setDefaultCol(col.id);
@@ -1319,6 +1339,7 @@ function KanbanPage() {
                         columns={columns}
                         tags={tags}
                         statuses={statuses}
+                        collaborators={collaborators}
                         onEdit={() => {
                           setEditTask(t);
                           setDialogOpen(true);
@@ -1351,6 +1372,7 @@ function KanbanPage() {
                       columns={columns}
                       tags={tags}
                       statuses={statuses}
+                      collaborators={collaborators}
                       onEdit={() => {
                         setEditTask(t);
                         setDialogOpen(true);
@@ -1372,6 +1394,7 @@ function KanbanPage() {
                   columns={columns}
                   tags={tags}
                   statuses={statuses}
+                  collaborators={collaborators}
                 />
               </div>
             )}
@@ -1386,7 +1409,6 @@ function KanbanPage() {
         defaultColumnId={defaultCol}
       />
       <TagManagerDialog open={tagsOpen} onOpenChange={setTagsOpen} />
-      <StatusManagerDialog open={statusesOpen} onOpenChange={setStatusesOpen} />
       <ClientFilesSheet open={filesOpen} onOpenChange={setFilesOpen} />
 
       <Dialog
@@ -1473,45 +1495,6 @@ function KanbanScrollArea({
   children: React.ReactNode;
 }) {
   const mainRef = useRef<HTMLDivElement>(null);
-  const topRef = useRef<HTMLDivElement>(null);
-  const [innerWidth, setInnerWidth] = useState(0);
-  const [needsScroll, setNeedsScroll] = useState(false);
-  const syncing = useRef<"top" | "main" | null>(null);
-
-  // Mede largura interna do conteúdo para espelhar no scrollbar superior
-  useLayoutEffect(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const measure = () => {
-      setInnerWidth(el.scrollWidth);
-      setNeedsScroll(el.scrollWidth > el.clientWidth + 1);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    Array.from(el.children).forEach((c) => ro.observe(c));
-    return () => ro.disconnect();
-  }, [children, orientation]);
-
-  // Sincroniza scroll entre barra de cima e container principal
-  const onMainScroll = () => {
-    if (syncing.current === "top") {
-      syncing.current = null;
-      return;
-    }
-    if (!topRef.current || !mainRef.current) return;
-    syncing.current = "main";
-    topRef.current.scrollLeft = mainRef.current.scrollLeft;
-  };
-  const onTopScroll = () => {
-    if (syncing.current === "main") {
-      syncing.current = null;
-      return;
-    }
-    if (!topRef.current || !mainRef.current) return;
-    syncing.current = "top";
-    mainRef.current.scrollLeft = topRef.current.scrollLeft;
-  };
 
   // Wheel vertical → scroll horizontal quando estiver no modo horizontal
   useEffect(() => {
@@ -1540,18 +1523,8 @@ function KanbanScrollArea({
   }, [orientation]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {needsScroll && orientation === "horizontal" ? (
-        <div
-          ref={topRef}
-          onScroll={onTopScroll}
-          className="kanban-scroll-top mx-4 mt-2 h-3 overflow-x-auto overflow-y-hidden rounded-full bg-muted/40"
-          title="Use para rolar o Kanban horizontalmente"
-        >
-          <div style={{ width: innerWidth, height: 1 }} />
-        </div>
-      ) : null}
-      <div ref={mainRef} onScroll={onMainScroll} className="kanban-scroll flex-1 overflow-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div ref={mainRef} className="kanban-scroll min-h-0 flex-1 overflow-auto p-4">
         {children}
       </div>
     </div>

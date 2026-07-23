@@ -20,7 +20,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { useClients, useProfiles, useTaskStatuses } from "@/hooks/use-data";
+import { useClients, useProfiles } from "@/hooks/use-data";
 
 import { dateFilterLabels, matchDateFilter, type DateFilter } from "@/lib/task-utils";
 
@@ -29,7 +29,6 @@ export type TaskScope = "all" | "mine" | "created";
 interface Filters {
   scope?: TaskScope;
   date?: DateFilter;
-  statusIds?: string[];
   client?: string; // legacy single-select (still respected)
   clients?: string[]; // multi-select
   assignee?: string;
@@ -52,14 +51,11 @@ const DATE_OPTIONS: DateFilter[] = [
 export function TaskFilters({ filters, onChange, children }: { filters: Filters; onChange: (f: Filters) => void; children?: ReactNode }) {
   const { data: clients } = useClients();
   const { data: profiles } = useProfiles();
-  const { data: statuses = [] } = useTaskStatuses();
   const [clientsOpen, setClientsOpen] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const scope: TaskScope = filters.scope ?? "all";
   const dateVal: DateFilter = filters.date ?? "all";
-  const statusIds = filters.statusIds ?? [];
 
   const selectedClients = useMemo<string[]>(() => {
     if (filters.clients && filters.clients.length > 0) return filters.clients;
@@ -79,11 +75,6 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
     );
   };
 
-  const toggleStatus = (id: string) => {
-    const next = statusIds.includes(id) ? statusIds.filter((s) => s !== id) : [...statusIds, id];
-    onChange({ ...filters, statusIds: next.length > 0 ? next : undefined });
-  };
-
   const filteredClients = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = clients ?? [];
@@ -99,17 +90,9 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
         ? (clients?.find((c) => c.id === selectedClients[0])?.name ?? "1 cliente")
         : `${selectedClients.length} clientes`;
 
-  const statusLabel =
-    statusIds.length === 0
-      ? "Status"
-      : statusIds.length === 1
-        ? (statuses.find((s) => s.id === statusIds[0])?.name ?? "1 status")
-        : `${statusIds.length} status`;
-
   const activeCount = [
     scope !== "all",
     dateVal !== "all",
-    statusIds.length > 0,
     selectedClients.length > 0,
     !!filters.assignee,
     !!filters.priority,
@@ -148,55 +131,6 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
             </SelectContent>
           </Select>
           </div>
-
-          {/* Status multi */}
-              <div className="flex flex-wrap gap-2">
-          <Popover open={statusOpen} onOpenChange={setStatusOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 justify-between gap-2 font-normal">
-                <span className="truncate max-w-32">{statusLabel}</span>
-                {statusIds.length > 0 && (
-                  <Badge variant="secondary" className="h-5 px-1.5">
-                    {statusIds.length}
-                  </Badge>
-                )}
-                <ChevronDown className="h-4 w-4 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-56 p-2">
-              <div className="flex items-center justify-between mb-1 px-1">
-                <span className="text-xs text-muted-foreground">Filtrar por status</span>
-                {statusIds.length > 0 && (
-                  <button
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => onChange({ ...filters, statusIds: undefined })}
-                  >
-                    Limpar
-                  </button>
-                )}
-              </div>
-              <div className="max-h-64 overflow-y-auto">
-                {statuses.length === 0 && (
-                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                    Sem status
-                  </div>
-                )}
-                {statuses.map((s) => (
-                  <label
-                    key={s.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
-                  >
-                    <Checkbox
-                      checked={statusIds.includes(s.id)}
-                      onCheckedChange={() => toggleStatus(s.id)}
-                    />
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-                    <span className="truncate">{s.name}</span>
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
 
           {/* Clients multi */}
           <Popover open={clientsOpen} onOpenChange={setClientsOpen}>
@@ -303,7 +237,6 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
               <SelectItem value="urgent">Urgente</SelectItem>
             </SelectContent>
           </Select>
-              </div>
       {activeCount > 0 && (
         <Button size="sm" variant="ghost" className="h-8 ml-auto text-muted-foreground" onClick={clearAll}>
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
@@ -355,7 +288,6 @@ export function applyTaskFilters<
     client_id: string | null;
     assignee_id: string | null;
     priority: string | null;
-    status_id?: string | null;
     created_by?: string | null;
     due_date: string | null;
     status: string | null;
@@ -367,24 +299,26 @@ export function applyTaskFilters<
   opts?: {
     userId?: string | null;
     subtaskAssigneeTaskIds?: Set<string> | null;
+    collaboratorTaskIds?: Set<string> | null;
     subtaskAssigneeTaskIdsByUser?: Map<string, Set<string>> | null;
   },
 ) {
   const clientIds = f.clients && f.clients.length > 0 ? f.clients : f.client ? [f.client] : null;
   const uid = opts?.userId ?? null;
   const subIds = opts?.subtaskAssigneeTaskIds ?? null;
+  const collaboratorIds = opts?.collaboratorTaskIds ?? null;
   return tasks.filter((t) => {
     if (f.scope === "mine") {
       if (!uid) return false;
-      const mine = t.assignee_id === uid || (subIds ? subIds.has(t.id) : false);
+      const mine =
+        t.assignee_id === uid ||
+        (subIds ? subIds.has(t.id) : false) ||
+        (collaboratorIds ? collaboratorIds.has(t.id) : false);
       if (!mine) return false;
     }
     if (f.scope === "created" && (!uid || t.created_by !== uid)) return false;
 
     if (f.date && f.date !== "all" && !matchDateFilter(t, f.date)) return false;
-    if (f.statusIds && f.statusIds.length > 0) {
-      if (!t.status_id || !f.statusIds.includes(t.status_id)) return false;
-    }
     if (clientIds && (!t.client_id || !clientIds.includes(t.client_id))) return false;
     if (f.assignee) {
       const assigneeSubtasks = opts?.subtaskAssigneeTaskIdsByUser?.get(f.assignee);

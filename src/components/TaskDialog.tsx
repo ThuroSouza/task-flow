@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,16 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useClients, useColumns, useProfiles, type Task } from "@/hooks/use-data";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Bold, Italic, Underline, Trash2, Paperclip, Send, Download, ExternalLink, X, Plus, Link2, ChevronDown, ChevronRight } from "lucide-react";
+import { Trash2, Paperclip, Send, Download, ExternalLink, X, Plus, Link2, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { AttachmentPreviewDialog } from "@/components/AttachmentPreviewDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 interface Props {
   open: boolean;
@@ -45,6 +49,8 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
   const [columnId, setColumnId] = useState<string>("");
   const [clientId, setClientId] = useState<string>("");
   const [assigneeId, setAssigneeId] = useState<string>("");
+  const [collaboratorIds, setCollaboratorIds] = useState<string[]>([]);
+  const [collaboratorPickerOpen, setCollaboratorPickerOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string>("");
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const currentTaskIdRef = useRef<string | null>(null);
@@ -89,6 +95,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
       setColumnId(task.column_id ?? "");
       setClientId(task.client_id ?? "");
       setAssigneeId(task.assignee_id ?? "");
+      void loadCollaborators(task.id);
       setDueDate(task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd'T'HH:mm") : "");
       currentTaskIdRef.current = task.id;
       setCurrentTaskId(task.id);
@@ -98,7 +105,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
       loadRelated(task.id);
     } else {
       setTitle(""); setDescription(""); setStatus("todo"); setPriority("medium");
-      setColumnId(defaultColumnId ?? ""); setClientId(""); setAssigneeId(""); setDueDate("");
+      setColumnId(defaultColumnId ?? ""); setClientId(""); setAssigneeId(""); setCollaboratorIds([]); setDueDate("");
       currentTaskIdRef.current = null;
       setCurrentTaskId(null);
       setSubtasks([]); setComments([]); setAttachments([]); setNewCommentTitle(""); setNewComment(""); setOpenComments({});
@@ -125,15 +132,39 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
     setAttachments((a.data ?? []) as Attachment[]);
   };
 
-  const formatSelected = (tag: "b" | "i" | "u") => {
-    const map = { b: ["**", "**"], i: ["*", "*"], u: ["<u>", "</u>"] } as const;
-    const ta = document.getElementById("task-description") as HTMLTextAreaElement | null;
-    if (!ta) return;
-    const start = ta.selectionStart, end = ta.selectionEnd;
-    const sel = description.slice(start, end) || "texto";
-    const [a, b] = map[tag];
-    const next = description.slice(0, start) + a + sel + b + description.slice(end);
-    setDescription(next);
+  const loadCollaborators = async (taskId: string) => {
+    const { data, error } = await (supabase.from("task_collaborators") as any)
+      .select("collaborator_id")
+      .eq("task_id", taskId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setCollaboratorIds((data ?? []).map((collaborator: { collaborator_id: string }) => collaborator.collaborator_id));
+  };
+
+  const syncCollaborators = async (taskId: string) => {
+    const { error: deleteError } = await (supabase.from("task_collaborators") as any)
+      .delete()
+      .eq("task_id", taskId);
+    if (deleteError) throw deleteError;
+    if (collaboratorIds.length === 0) return;
+    const { error: insertError } = await (supabase.from("task_collaborators") as any).insert(
+      collaboratorIds.map((collaboratorId) => ({
+        task_id: taskId,
+        collaborator_id: collaboratorId,
+        added_by: user?.id ?? null,
+      })),
+    );
+    if (insertError) throw insertError;
+  };
+
+  const toggleCollaborator = (collaboratorId: string) => {
+    setCollaboratorIds((current) =>
+      current.includes(collaboratorId)
+        ? current.filter((id) => id !== collaboratorId)
+        : [...current, collaboratorId],
+    );
   };
 
   const buildPayload = () => ({
@@ -148,21 +179,62 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
     completed_at: status === "done" ? new Date().toISOString() : null,
   });
 
+  // React can retain the previous user while Supabase refreshes or clears an
+  // expired token. Database writes must use the live session so they are sent
+  // as `authenticated`, not `anon` (which RLS correctly rejects).
+  const getAuthenticatedUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      toast.error("Sua sessão expirou. Entre novamente para criar uma tarefa.");
+      return null;
+    }
+    const { data: { user: authenticatedUser }, error } = await supabase.auth.getUser();
+    if (error || !authenticatedUser) {
+      toast.error("Não foi possível validar sua sessão. Entre novamente para criar uma tarefa.");
+      return null;
+    }
+    const url = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !publishableKey) {
+      toast.error("A conexão com o Supabase não está configurada.");
+      return null;
+    }
+
+    // Use the verified access token explicitly for task creation. This avoids a
+    // stale internal auth state causing PostgREST to receive the request as anon.
+    const authenticatedClient = createClient<Database>(url, publishableKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${session.access_token}` } },
+    });
+    return { user: authenticatedUser, client: authenticatedClient };
+  };
+
   // Ensures a task row exists so sub-features (subtasks/comments/files) can attach.
   // Auto-creates a draft when the dialog is in "new task" mode.
   const ensureTask = async (): Promise<string | null> => {
     const existingId = currentTaskIdRef.current ?? currentTaskId;
     if (existingId) return existingId;
-    if (!user) return null;
+    const authenticated = await getAuthenticatedUser();
+    if (!authenticated) return null;
     if (!title.trim()) { toast.error("Defina um título antes de adicionar itens"); return null; }
     if (!dueDate && !recurrenceEnabled) { toast.error("Defina um prazo antes de criar a tarefa"); return null; }
-    const { data, error } = await supabase.from("tasks").insert({ ...buildPayload(), created_by: user.id }).select().single();
+    // Do not use INSERT ... RETURNING here. The tasks SELECT policy checks
+    // visibility through can_view_task(), which cannot see a just-inserted row
+    // from inside the same RETURNING statement. A client UUID lets us continue
+    // with the new task without that second RLS evaluation.
+    const taskId = crypto.randomUUID();
+    const { error } = await authenticated.client.from("tasks").insert({
+      id: taskId,
+      ...buildPayload(),
+      created_by: authenticated.user.id,
+    });
     if (error) { toast.error(error.message); return null; }
-    currentTaskIdRef.current = data.id as string;
-    setCurrentTaskId(data.id as string);
-    await supabase.from("task_history").insert({ task_id: data.id, user_id: user.id, action: "created" });
+    currentTaskIdRef.current = taskId;
+    setCurrentTaskId(taskId);
+    await syncCollaborators(taskId);
+    await supabase.from("task_history").insert({ task_id: taskId, user_id: authenticated.user.id, action: "created" });
     qc.invalidateQueries({ queryKey: ["tasks"] });
-    return data.id as string;
+    return taskId;
   };
 
   const commitPendingSubtask = async (taskId: string): Promise<boolean> => {
@@ -198,7 +270,8 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
 
   const save = async () => {
     if (!title.trim()) { toast.error("Título é obrigatório"); return; }
-    if (!user) return;
+    const authenticated = await getAuthenticatedUser();
+    if (!authenticated) return;
     const existingTaskId = currentTaskIdRef.current ?? currentTaskId;
     if (!existingTaskId && !recurrenceEnabled && !dueDate) {
       toast.error("Prazo é obrigatório para criar uma tarefa");
@@ -210,7 +283,8 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
       if (existingTaskId) {
         const { error } = await supabase.from("tasks").update(payload).eq("id", existingTaskId);
         if (error) throw error;
-        await supabase.from("task_history").insert({ task_id: existingTaskId, user_id: user.id, action: "updated" });
+        await syncCollaborators(existingTaskId);
+        await supabase.from("task_history").insert({ task_id: existingTaskId, user_id: authenticated.user.id, action: "updated" });
         if (!(await commitPendingSubtask(existingTaskId))) return;
       } else if (recurrenceEnabled) {
         if (newSubtask.trim()) {
@@ -233,24 +307,37 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
           rows.push({ ...payload, due_date: due.toISOString() });
         }
         if (rows.length === 0) { toast.error("Nenhuma ocorrência no intervalo"); setSaving(false); return; }
-        const { error } = await supabase.from("tasks").insert(rows.map(r => ({ ...r, created_by: user.id })));
+        const tasksToCreate = rows.map((row) => ({
+          id: crypto.randomUUID(),
+          ...row,
+          created_by: authenticated.user.id,
+        }));
+        const { error } = await authenticated.client.from("tasks").insert(tasksToCreate);
         if (error) throw error;
+        await Promise.all(tasksToCreate.map((createdTask) => syncCollaborators(createdTask.id)));
         toast.success(`${rows.length} tarefas recorrentes criadas`);
         qc.invalidateQueries({ queryKey: ["tasks"] });
         onOpenChange(false);
         return;
       } else {
-        const { data, error } = await supabase.from("tasks").insert({ ...payload, created_by: user.id }).select().single();
+        const taskId = crypto.randomUUID();
+        const { error } = await authenticated.client.from("tasks").insert({
+          id: taskId,
+          ...payload,
+          created_by: authenticated.user.id,
+        });
         if (error) throw error;
-        await supabase.from("task_history").insert({ task_id: data.id, user_id: user.id, action: "created" });
-        currentTaskIdRef.current = data.id as string;
-        setCurrentTaskId(data.id as string);
-        if (!(await commitPendingSubtask(data.id as string))) return;
+        await supabase.from("task_history").insert({ task_id: taskId, user_id: authenticated.user.id, action: "created" });
+        currentTaskIdRef.current = taskId;
+        setCurrentTaskId(taskId);
+        await syncCollaborators(taskId);
+        if (!(await commitPendingSubtask(taskId))) return;
       }
       toast.success(currentTaskId || task ? "Tarefa atualizada" : "Tarefa criada");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["tasks"] }),
         qc.invalidateQueries({ queryKey: ["subtasks"] }),
+        qc.invalidateQueries({ queryKey: ["task_collaborators"] }),
       ]);
       onOpenChange(false);
     } catch (e) {
@@ -448,19 +535,6 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             <div className="space-y-2">
-              <Label className="text-xs">Status</Label>
-              <Select value={status ?? "none"} onValueChange={(v) => setStatus(v === "none" ? null : (v as Task["status"]))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem status</SelectItem>
-                  <SelectItem value="todo">A Fazer</SelectItem>
-                  <SelectItem value="in_progress">Em Andamento</SelectItem>
-                  <SelectItem value="review">Em Revisão</SelectItem>
-                  <SelectItem value="done">Concluído</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label className="text-xs">Prioridade</Label>
               <Select value={priority ?? "none"} onValueChange={(v) => setPriority(v === "none" ? null : (v as Task["priority"]))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -491,6 +565,41 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                   </Button>
                 )}
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Colaboradores</Label>
+              <Popover open={collaboratorPickerOpen} onOpenChange={setCollaboratorPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal">
+                    <span className="truncate">
+                      {collaboratorIds.length === 0
+                        ? "Selecionar nomes"
+                        : `${collaboratorIds.length} selecionado${collaboratorIds.length === 1 ? "" : "s"}`}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-64 p-2">
+                  <div className="max-h-56 space-y-0.5 overflow-y-auto">
+                    {(profiles ?? []).filter((profile) => profile.is_active !== false).map((profile) => {
+                      const selected = collaboratorIds.includes(profile.id);
+                      const name = profile.full_name || profile.email || "Usuário sem nome";
+                      return (
+                        <label
+                          key={profile.id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                        >
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={() => toggleCollaborator(profile.id)}
+                          />
+                          <span className="truncate">{name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
           </div>
@@ -529,15 +638,13 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Descrição</Label>
-              <div className="flex gap-1">
-                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => formatSelected("b")}><Bold className="h-3.5 w-3.5" /></Button>
-                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => formatSelected("i")}><Italic className="h-3.5 w-3.5" /></Button>
-                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => formatSelected("u")}><Underline className="h-3.5 w-3.5" /></Button>
-              </div>
-            </div>
-            <Textarea id="task-description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Use **negrito**, *itálico*, <u>sublinhado</u>" />
+            <Label>Descrição</Label>
+            <RichTextEditor
+              value={description}
+              onChange={setDescription}
+              placeholder="Descreva a tarefa..."
+              minHeight={100}
+            />
           </div>
 
           {!currentTaskId && (

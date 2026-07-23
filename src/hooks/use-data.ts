@@ -100,6 +100,13 @@ export interface Profile {
   is_active?: boolean;
 }
 
+export interface TaskCollaborator {
+  task_id: string;
+  collaborator_id: string;
+  added_by: string | null;
+  created_at: string;
+}
+
 export interface ClientInvoice {
   id: string;
   client_id: string;
@@ -229,6 +236,18 @@ export function useProfiles() {
       const { data, error } = await (supabase.from("profiles") as any).select("id, full_name, color, avatar_url, is_active");
       if (error) throw error;
       return (data ?? []) as Profile[];
+    },
+  });
+}
+
+export function useTaskCollaborators() {
+  return useQuery({
+    queryKey: ["task_collaborators"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("task_collaborators") as any)
+        .select("task_id, collaborator_id, added_by, created_at");
+      if (error) throw error;
+      return (data ?? []) as TaskCollaborator[];
     },
   });
 }

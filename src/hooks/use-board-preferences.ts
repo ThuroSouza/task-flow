@@ -10,7 +10,6 @@ export const ALL_FIELDS = [
   "attachments",
   "interruptions",
   "priority",
-  "status",
   "due",
   "createdAt",
   "meta",
@@ -25,7 +24,6 @@ export const FIELD_LABELS: Record<CardField, string> = {
   attachments: "Arquivos externos",
   interruptions: "Interrupções",
   priority: "Prioridade",
-  status: "Status",
   due: "Prazo",
   createdAt: "Data de criação",
   meta: "Responsável e ações rápidas",
@@ -39,7 +37,6 @@ const DEFAULT_ORDER: CardField[] = [
   "attachments",
   "interruptions",
   "priority",
-  "status",
   "due",
   "createdAt",
   "meta",
@@ -68,7 +65,7 @@ function migrateChips(fields: string[]): CardField[] {
   };
   for (const f of fields) {
     if (f === "chips") {
-      (["priority", "status", "due", "createdAt"] as CardField[]).forEach(push);
+      (["priority", "due", "createdAt"] as CardField[]).forEach(push);
     } else if (f === "due") {
       (["due", "createdAt"] as CardField[]).forEach(push);
     } else if ((ALL_FIELDS as readonly string[]).includes(f)) {

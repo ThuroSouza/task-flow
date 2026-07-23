@@ -26,7 +26,6 @@ import {
   User as UserIcon,
   Users,
   X,
-  Zap,
 
 
 } from "lucide-react";
@@ -51,11 +50,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AttachmentPreviewDialog } from "@/components/AttachmentPreviewDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextEditor, RichTextView } from "@/components/RichTextEditor";
 import { CommentAttachments } from "@/components/CommentAttachments";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import type { Client, KanbanColumn, Profile, Task, TaskStatus, TaskTag } from "@/hooks/use-data";
+import type { Client, KanbanColumn, Profile, Task, TaskCollaborator, TaskStatus, TaskTag } from "@/hooks/use-data";
 import { useBoardPreferences, type CardField } from "@/hooks/use-board-preferences";
 import { InterruptionsBlock } from "@/components/InterruptionsBlock";
 import { toast } from "sonner";
@@ -94,7 +94,6 @@ interface CardComment {
 
 
 const LINK_MIME = "text/uri-list";
-const DESCRIPTION_PREVIEW_LIMIT = 250;
 const DESCRIPTION_COLLAPSED_LIMIT = 140;
 
 interface Props {
@@ -104,6 +103,7 @@ interface Props {
   profiles?: Profile[];
   tags?: TaskTag[];
   statuses?: TaskStatus[];
+  collaborators?: TaskCollaborator[];
   onEdit?: () => void;
   onDuplicate?: () => void;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
@@ -138,6 +138,7 @@ export function TaskCard({
   profiles = [],
   tags = [],
   statuses = [],
+  collaborators = [],
   onEdit,
   onDuplicate,
   dragHandleProps,
@@ -153,6 +154,7 @@ export function TaskCard({
   const [descEditing, setDescEditing] = useState(false);
   const [descDraft, setDescDraft] = useState(task.description ?? "");
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [collaboratorsOpen, setCollaboratorsOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
@@ -285,6 +287,45 @@ export function TaskCard({
     () => profiles.find((p) => p.id === task.assignee_id),
     [profiles, task.assignee_id],
   );
+  const taskCollaborators = useMemo(
+    () => collaborators
+      .filter((collaborator) => collaborator.task_id === task.id)
+      .map((collaborator) => profiles.find((profile) => profile.id === collaborator.collaborator_id))
+      .filter((profile): profile is Profile => Boolean(profile)),
+    [collaborators, profiles, task.id],
+  );
+  const taskPeople = useMemo(
+    () => [assignee, ...taskCollaborators].filter(
+      (profile, index, people): profile is Profile =>
+        Boolean(profile) && people.findIndex((person) => person?.id === profile?.id) === index,
+    ),
+    [assignee, taskCollaborators],
+  );
+
+  const toggleCollaborator = async (collaboratorId: string) => {
+    const existing = collaborators.find(
+      (collaborator) => collaborator.task_id === task.id && collaborator.collaborator_id === collaboratorId,
+    );
+    const queryKey = ["task_collaborators"];
+    if (existing) {
+      const { error } = await (supabase.from("task_collaborators") as any)
+        .delete()
+        .eq("task_id", task.id)
+        .eq("collaborator_id", collaboratorId);
+      if (error) return toast.error(error.message);
+      qc.setQueryData<TaskCollaborator[]>(queryKey, (current = []) =>
+        current.filter((collaborator) => !(collaborator.task_id === task.id && collaborator.collaborator_id === collaboratorId)),
+      );
+    } else {
+      const { data, error } = await (supabase.from("task_collaborators") as any)
+        .insert({ task_id: task.id, collaborator_id: collaboratorId, added_by: user?.id ?? null })
+        .select("task_id, collaborator_id, added_by, created_at")
+        .single();
+      if (error) return toast.error(error.message);
+      qc.setQueryData<TaskCollaborator[]>(queryKey, (current = []) => [...current, data as TaskCollaborator]);
+    }
+    qc.invalidateQueries({ queryKey });
+  };
   const creator = useMemo(
     () => profiles.find((p) => p.id === task.created_by),
     [profiles, task.created_by],
@@ -654,39 +695,11 @@ export function TaskCard({
   };
 
 
-  const currentStatus = useMemo(
-    () => statuses.find((s) => s.id === task.status_id) ?? null,
-    [statuses, task.status_id],
-  );
   const completedStatus = useMemo(() => statuses.find((s) => s.is_completed) ?? null, [statuses]);
-  const isActiveStatus = !!currentStatus?.is_active;
-  const isCompletedStatus = !!currentStatus?.is_completed || !!task.completed_at;
-  const completedColor = currentStatus?.is_completed ? currentStatus.color : "#10b981";
   const listColor = useMemo(
-    () => columns.find((column) => column.id === task.column_id)?.color || (isCompletedStatus ? completedColor : "#1e3a8a"),
-    [columns, task.column_id, isCompletedStatus, completedColor],
+    () => columns.find((column) => column.id === task.column_id)?.color || "#1e3a8a",
+    [columns, task.column_id],
   );
-
-  const changeStatus = async (s: TaskStatus) => {
-    const patch: Partial<Task> = {
-      status_id: s.id,
-      status: s.is_completed ? "done" : "todo",
-      completed_at: s.is_completed ? new Date().toISOString() : null,
-    };
-    // When marking as "in progress" / active, bump card to the top of its column
-    if (s.is_active && !s.is_completed && task.column_id) {
-      const { data: siblings } = await supabase
-        .from("tasks")
-        .select("position")
-        .eq("column_id", task.column_id)
-        .neq("id", task.id)
-        .order("position", { ascending: true })
-        .limit(1);
-      const minPos = siblings && siblings.length > 0 ? (siblings[0] as { position: number }).position : 0;
-      patch.position = minPos - 1;
-    }
-    await update(patch);
-  };
 
   const completeTask = async () => {
     await update({
@@ -728,24 +741,12 @@ export function TaskCard({
         {...dragHandleProps}
         className={cn(
           "group relative flex h-[510px] w-full cursor-grab touch-none flex-col overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
-          isActiveStatus && !isCompletedStatus && "z-10 scale-[1.025] shadow-xl ring-2",
-          isCompletedStatus && "ring-2 ring-emerald-500/70 border-emerald-500/40",
         )}
         style={{
           borderLeftWidth: 4,
           borderLeftColor: listColor,
-          ...(isCompletedStatus
-            ? {
-                ["--tw-ring-color" as never]: completedColor,
-                background: `linear-gradient(180deg, ${completedColor}22 0%, ${completedColor}10 100%)`,
-                boxShadow: `0 10px 30px -10px ${completedColor}80`,
-              }
-            : isActiveStatus && currentStatus
-            ? { ["--tw-ring-color" as never]: currentStatus.color, boxShadow: `0 10px 30px -10px ${currentStatus.color}80` }
-            : null),
         }}
       >
-        {/* Status color bar — visible whenever there's a custom status */}
         {/* Client color strip at top */}
         {client?.color ? (
           <div
@@ -922,6 +923,24 @@ export function TaskCard({
 
             </PopoverContent>
           </Popover>}
+          {taskPeople.length > 0 ? (
+            <div className="flex -space-x-1.5" title="Responsável e colaboradores">
+              {taskPeople.slice(0, 4).map((person) => {
+                const name = person.full_name || person.email || "Usuário";
+                return (
+                  <Avatar key={person.id} className="h-6 w-6 border-2 border-card text-[8px]" title={name}>
+                    <AvatarImage src={person.avatar_url || undefined} alt={name} />
+                    <AvatarFallback style={{ backgroundColor: person.color || undefined }}>
+                      {name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                );
+              })}
+              {taskPeople.length > 4 ? (
+                <span className="ml-1 self-center text-[10px] text-muted-foreground">+{taskPeople.length - 4}</span>
+              ) : null}
+            </div>
+          ) : null}
           <Button
             size="icon"
             variant="ghost"
@@ -931,31 +950,11 @@ export function TaskCard({
               stop(e);
               onEdit?.();
             }}
-            title="Abrir tarefa"
+            title="Editar tarefa"
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
           </Button>
         </div>
-
-        {/* Completion date badge — prominent green when completed */}
-        {isCompletedStatus && task.completed_at ? (
-          <div
-            className="mb-2 flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold"
-            style={{
-              order: -1,
-              background: `${completedColor}1f`,
-              borderColor: `${completedColor}66`,
-              color: completedColor,
-            }}
-            title={format(new Date(task.completed_at), "PPPp", { locale: ptBR })}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span className="uppercase tracking-wider">Concluída em</span>
-            <span className="ml-auto font-bold">
-              {format(new Date(task.completed_at), "dd/MM/yyyy", { locale: ptBR })}
-            </span>
-          </div>
-        ) : null}
 
         {/* Description — inline editable */}
         {isVisible("description") ? (
@@ -997,17 +996,19 @@ export function TaskCard({
           </>
         ) : task.description ? (
           <div className="mb-2">
-            <p
+            <div
               onPointerDown={stop}
               onClick={(e) => { stop(e); setDescEditing(true); }}
               className="cursor-text whitespace-pre-wrap rounded text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere] hover:bg-muted/40"
-              style={descriptionExpanded ? { maxHeight: "min(18rem, max(8rem, calc(100vh - 22rem)))", overflowY: "auto" } : undefined}
+              style={{
+                maxHeight: descriptionExpanded
+                  ? "min(18rem, max(8rem, calc(100vh - 22rem)))"
+                  : "7.5rem",
+                overflowY: descriptionExpanded ? "auto" : "hidden",
+              }}
             >
-              {descriptionExpanded
-                ? task.description.slice(0, DESCRIPTION_PREVIEW_LIMIT)
-                : task.description.slice(0, DESCRIPTION_COLLAPSED_LIMIT).trimEnd()}
-              {task.description.length > (descriptionExpanded ? DESCRIPTION_PREVIEW_LIMIT : DESCRIPTION_COLLAPSED_LIMIT) ? "…" : ""}
-            </p>
+              <RichTextView html={task.description} className="text-sm text-muted-foreground" />
+            </div>
             {task.description.length > DESCRIPTION_COLLAPSED_LIMIT ? (
               <button
                 type="button"
@@ -1330,56 +1331,47 @@ export function TaskCard({
           </div>
         ) : null}
 
-        {/* Status — bloco próprio */}
-        {isVisible("status") ? (
-          <div className="flex flex-wrap items-center gap-1" style={{ order: orderOf("status") }}>
-            <ChipPopover
-              value={
-                currentStatus ? (
-                  <span
-                    className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm"
-                    style={{ background: currentStatus.color, color: readableText(currentStatus.color) }}
+        <Collapsible
+          open={collaboratorsOpen}
+          onOpenChange={setCollaboratorsOpen}
+          className="rounded-md border"
+          style={{ order: orderOf("priority") + 1 }}
+        >
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              onPointerDown={stop}
+              className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted/60"
+            >
+              <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", collaboratorsOpen && "rotate-90")} />
+              <Users className="h-3.5 w-3.5" />
+              <span className="font-medium text-foreground">Colaboradores</span>
+              <span className="ml-auto text-[10px]">
+                {taskCollaborators.length === 0 ? "Nenhum" : taskCollaborators.length}
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="border-t p-1.5">
+            <div className="max-h-56 space-y-0.5 overflow-y-auto">
+              {profiles.filter((profile) => profile.is_active !== false).map((profile) => {
+                const checked = taskCollaborators.some((collaborator) => collaborator.id === profile.id);
+                return (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    onClick={() => void toggleCollaborator(profile.id)}
+                    className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-muted"
                   >
-                    {currentStatus.is_active ? <Zap className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />}
-                    {currentStatus.name}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted">
-                    <CheckCircle2 className="h-2.5 w-2.5" />
-                    Definir status
-                  </span>
-                )
-              }
-              render={(close) => (
-                <PopoverField label="Status">
-                  <div className="max-h-56 space-y-0.5 overflow-y-auto">
-                    {statuses.length === 0 ? (
-                      <p className="px-1 py-1 text-[11px] text-muted-foreground">Nenhum status criado</p>
-                    ) : statuses.map((s) => {
-                      const checked = task.status_id === s.id;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => { void changeStatus(s); close(); }}
-                          className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-muted"
-                        >
-                          <span className={cn("flex h-4 w-4 items-center justify-center rounded border", checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40")}>
-                            {checked ? <Check className="h-3 w-3" /> : null}
-                          </span>
-                          <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-                          <span className="flex-1 truncate">{s.name}</span>
-                          {s.is_active ? <Zap className="h-3 w-3 text-amber-500" /> : null}
-                          {s.is_completed ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </PopoverField>
-              )}
-            />
-          </div>
-        ) : null}
+                    <span className={cn("flex h-4 w-4 items-center justify-center rounded border", checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40")}>
+                      {checked ? <Check className="h-3 w-3" /> : null}
+                    </span>
+                    <span className="truncate">{profile.full_name || profile.email || "Usuário sem nome"}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Prazo — bloco próprio */}
         {isVisible("due") ? (

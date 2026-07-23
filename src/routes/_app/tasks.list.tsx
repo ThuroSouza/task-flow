@@ -12,6 +12,7 @@ import {
   useProfiles,
   useSubtasks,
   useTaskStatuses,
+  useTaskCollaborators,
   type Task,
 } from "@/hooks/use-data";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,6 +37,7 @@ function ListPage() {
   const { data: profiles = [] } = useProfiles();
   const { data: subtasks = [] } = useSubtasks();
   const { data: statuses = [] } = useTaskStatuses();
+  const { data: collaborators = [] } = useTaskCollaborators();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   useColumns();
@@ -81,10 +83,16 @@ function ListPage() {
     return map;
   }, [subtasks]);
 
+  const collaboratorTaskIds = useMemo(
+    () => new Set(collaborators.filter((collaborator) => collaborator.collaborator_id === user?.id).map((collaborator) => collaborator.task_id)),
+    [collaborators, user?.id],
+  );
+
   const list = useMemo(() => {
     const r = applyTaskFilters(tasks, filters, {
       userId: user?.id ?? null,
       subtaskAssigneeTaskIds,
+      collaboratorTaskIds,
       subtaskAssigneeTaskIdsByUser,
     });
     return r.filter((task) => task.status !== "done" && !task.completed_at).sort((a, b) => {
@@ -93,7 +101,7 @@ function ListPage() {
       if (!b.due_date) return -1;
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     });
-  }, [tasks, filters, user?.id, subtaskAssigneeTaskIds, subtaskAssigneeTaskIdsByUser]);
+  }, [tasks, filters, user?.id, subtaskAssigneeTaskIds, collaboratorTaskIds, subtaskAssigneeTaskIdsByUser]);
 
   const completeTask = async (taskId: string) => {
     const completedStatus = statuses.find((status) => status.is_completed);
