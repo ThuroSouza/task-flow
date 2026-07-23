@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useDeletedTasks, useClients, useProfiles } from "@/hooks/use-data";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/trash")({
   component: TrashPage,
@@ -16,6 +17,10 @@ function TrashPage() {
   const { data: tasks = [], isLoading } = useDeletedTasks();
   const { data: clients = [] } = useClients();
   const { data: profiles = [] } = useProfiles();
+  const { user, isAdmin } = useAuth();
+  const canDeleteTask = (task: (typeof tasks)[number]) =>
+    !!isAdmin || task.created_by === user?.id;
+  const deletableTasks = tasks.filter(canDeleteTask);
 
   const restore = async (id: string) => {
     const { error } = await supabase
@@ -36,9 +41,9 @@ function TrashPage() {
   };
 
   const purgeAll = async () => {
-    if (!tasks.length) return;
-    if (!confirm(`Excluir permanentemente ${tasks.length} tarefa(s) da lixeira?`)) return;
-    const ids = tasks.map((t) => t.id);
+    if (!deletableTasks.length) return;
+    if (!confirm(`Excluir permanentemente ${deletableTasks.length} tarefa(s) da lixeira?`)) return;
+    const ids = deletableTasks.map((t) => t.id);
     const { error } = await supabase.from("tasks").delete().in("id", ids);
     if (error) return toast.error(error.message);
     toast.success("Lixeira esvaziada");
@@ -54,7 +59,7 @@ function TrashPage() {
             Tarefas excluídas. Restaure ou apague permanentemente.
           </p>
         </div>
-        {tasks.length > 0 && (
+        {deletableTasks.length > 0 && (
           <Button variant="destructive" onClick={purgeAll}>
             <Trash2 className="mr-2 h-4 w-4" />Esvaziar lixeira
           </Button>
@@ -93,12 +98,16 @@ function TrashPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" onClick={() => restore(t.id)}>
-                          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />Restaurar
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => purge(t.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {canDeleteTask(t) && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => restore(t.id)}>
+                              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />Restaurar
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => purge(t.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

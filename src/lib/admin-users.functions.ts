@@ -2,22 +2,80 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const userAccessSchema = z.object({
+  fullName: z.string().trim().min(2).max(120),
+  email: z.string().trim().email(),
+  password: z.string().min(6).max(128),
+  role: z.enum(["admin", "collaborator", "client"]),
+  permissions: z.array(z.string()).max(20),
+});
+
+async function requireAdmin(userId: string | null) {
+  if (!userId) throw new Response("Unauthorized", { status: 401 });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  if (!data?.some((row: { role: string }) => row.role === "admin")) throw new Response("Forbidden", { status: 403 });
+  return supabaseAdmin;
+}
+
+export const createUserAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => userAccessSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const callerId = (context as any)?.userId ?? null;
+    const supabaseAdmin = await requireAdmin(callerId);
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: data.fullName, role: data.role },
+    });
+    if (error) throw new Error(error.message);
+    if (!created.user) throw new Error("NÃ£o foi possÃ­vel criar o usuÃ¡rio.");
+
+    const { error: permissionsError } = await supabaseAdmin.from("user_permissions").upsert({
+      user_id: created.user.id,
+      permissions: data.role === "admin" ? ["dashboard", "tasks", "notes", "import_ata", "clients", "reports", "portal", "calendar", "users", "trash", "settings"] : data.permissions,
+      updated_by: callerId,
+    });
+    if (permissionsError) throw new Error(permissionsError.message);
+    return { userId: created.user.id };
+  });
+
+export const updateUserAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ userId: z.string().uuid(), role: z.enum(["admin", "collaborator", "client"]), permissions: z.array(z.string()).max(20) }).parse(data))
+  .handler(async ({ data, context }) => {
+    const callerId = (context as any)?.userId ?? null;
+    const supabaseAdmin = await requireAdmin(callerId);
+    if (data.userId === callerId && data.role !== "admin") throw new Error("VocÃª nÃ£o pode remover seu prÃ³prio acesso de administrador.");
+    const { error: roleError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    if (roleError) throw new Error(roleError.message);
+    const { error: insertRoleError } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: data.role });
+    if (insertRoleError) throw new Error(insertRoleError.message);
+    const { error: permissionsError } = await supabaseAdmin.from("user_permissions").upsert({ user_id: data.userId, permissions: data.role === "admin" ? ["dashboard", "tasks", "notes", "import_ata", "clients", "reports", "portal", "calendar", "users", "trash", "settings"] : data.permissions, updated_by: callerId });
+    if (permissionsError) throw new Error(permissionsError.message);
+    return { ok: true };
+  });
+
 export const deleteUserCompletely = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const callerId = (context as any)?.userId ?? null;
 
     // Verify caller is admin
     const { data: callerRoles, error: rolesErr } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", context.userId);
+      .eq("user_id", callerId ?? "");
     if (rolesErr) throw new Error(rolesErr.message);
-    if (!callerRoles?.some((r) => r.role === "admin")) {
+    if (!callerRoles?.some((r: { role: string }) => r.role === "admin")) {
       throw new Response("Forbidden", { status: 403 });
     }
-    if (data.userId === context.userId) {
+    if (data.userId === callerId) {
       throw new Error("Você não pode excluir a si mesmo.");
     }
 

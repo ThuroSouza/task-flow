@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AppCalendarioRouteImport } from './routes/_app/calendario'
 import { Route as AppClientsRouteImport } from './routes/_app/clients'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppImportAtaRouteImport } from './routes/_app/import-ata'
 import { Route as AppNotesRouteImport } from './routes/_app/notes'
+import { Route as AppPortalRouteImport } from './routes/_app/portal'
 import { Route as AppReportsRouteImport } from './routes/_app/reports'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
@@ -44,6 +46,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppCalendarioRoute = AppCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientsRoute = AppClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -62,6 +69,11 @@ const AppImportAtaRoute = AppImportAtaRouteImport.update({
 const AppNotesRoute = AppNotesRouteImport.update({
   id: '/notes',
   path: '/notes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPortalRoute = AppPortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReportsRoute = AppReportsRouteImport.update({
@@ -133,10 +145,12 @@ const AppClientsClientIdEditRoute = AppClientsClientIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendario': typeof AppCalendarioRoute
   '/clients': typeof AppClientsRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/import-ata': typeof AppImportAtaRoute
   '/notes': typeof AppNotesRoute
+  '/portal': typeof AppPortalRoute
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRouteWithChildren
@@ -154,9 +168,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendario': typeof AppCalendarioRoute
   '/dashboard': typeof AppDashboardRoute
   '/import-ata': typeof AppImportAtaRoute
   '/notes': typeof AppNotesRoute
+  '/portal': typeof AppPortalRoute
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/trash': typeof AppTrashRoute
@@ -175,10 +191,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_app/calendario': typeof AppCalendarioRoute
   '/_app/clients': typeof AppClientsRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/import-ata': typeof AppImportAtaRoute
   '/_app/notes': typeof AppNotesRoute
+  '/_app/portal': typeof AppPortalRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/tasks': typeof AppTasksRouteWithChildren
@@ -198,10 +216,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/calendario'
     | '/clients'
     | '/dashboard'
     | '/import-ata'
     | '/notes'
+    | '/portal'
     | '/reports'
     | '/settings'
     | '/tasks'
@@ -219,9 +239,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/calendario'
     | '/dashboard'
     | '/import-ata'
     | '/notes'
+    | '/portal'
     | '/reports'
     | '/settings'
     | '/trash'
@@ -239,10 +261,12 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/auth'
+    | '/_app/calendario'
     | '/_app/clients'
     | '/_app/dashboard'
     | '/_app/import-ata'
     | '/_app/notes'
+    | '/_app/portal'
     | '/_app/reports'
     | '/_app/settings'
     | '/_app/tasks'
@@ -287,6 +311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/calendario': {
+      id: '/_app/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AppCalendarioRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clients': {
       id: '/_app/clients'
       path: '/clients'
@@ -313,6 +344,13 @@ declare module '@tanstack/react-router' {
       path: '/notes'
       fullPath: '/notes'
       preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/portal': {
+      id: '/_app/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof AppPortalRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/reports': {
@@ -444,10 +482,12 @@ const AppTasksRouteWithChildren = AppTasksRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppCalendarioRoute: typeof AppCalendarioRoute
   AppClientsRoute: typeof AppClientsRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppImportAtaRoute: typeof AppImportAtaRoute
   AppNotesRoute: typeof AppNotesRoute
+  AppPortalRoute: typeof AppPortalRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTasksRoute: typeof AppTasksRouteWithChildren
@@ -457,10 +497,12 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCalendarioRoute: AppCalendarioRoute,
   AppClientsRoute: AppClientsRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppImportAtaRoute: AppImportAtaRoute,
   AppNotesRoute: AppNotesRoute,
+  AppPortalRoute: AppPortalRoute,
   AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTasksRoute: AppTasksRouteWithChildren,

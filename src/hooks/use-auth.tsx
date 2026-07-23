@@ -16,6 +16,8 @@ interface AuthCtx {
   user: User | null;
   profile: Profile | null;
   isAdmin: boolean;
+  permissions: string[];
+  hasPermission: (permission: string) => boolean;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -28,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (uid: string) => {
@@ -42,13 +45,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(prof ? ({ ...prof, email: authUser.user?.email ?? null } as Profile) : null);
     // Admin-only pages are controlled by public.user_roles, not by hardcoded emails.
     const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    setIsAdmin(!!roles?.some((r) => r.role === "admin"));
+    const admin = !!roles?.some((r: { role: string }) => r.role === "admin");
+    setIsAdmin(admin);
+    const { data: access } = await (supabase.from("user_permissions") as any).select("permissions").eq("user_id", uid).maybeSingle();
+    setPermissions(admin ? ["dashboard", "tasks", "notes", "import_ata", "clients", "reports", "portal", "calendar", "users", "trash", "settings"] : (access?.permissions ?? []));
   };
 
   useEffect(() => {
     // Supabase emits auth state changes after sign-in, sign-out and token refresh.
     // The timeout avoids updating profile data inside the auth callback stack.
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e: unknown, s: Session | null) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
@@ -56,10 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setIsAdmin(false);
+        setPermissions([]);
       }
     });
     // Initial page load: restore any saved session from localStorage.
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (data.session?.user) loadProfile(data.session.user.id);
@@ -76,9 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshProfile = async () => {
     if (user) await loadProfile(user.id);
   };
+  const hasPermission = (permission: string) => isAdmin || permissions.includes(permission);
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, isAdmin, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, isAdmin, permissions, hasPermission, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

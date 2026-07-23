@@ -85,7 +85,6 @@ function EditClientPage() {
   const [employeeFormDepartmentId, setEmployeeFormDepartmentId] = useState<string | null>(null);
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [employeeName, setEmployeeName] = useState("");
-  const [employeeRegistration, setEmployeeRegistration] = useState("");
   const [employeeCbo, setEmployeeCbo] = useState("");
   const [employeeRole, setEmployeeRole] = useState("");
   const [employeeSalary, setEmployeeSalary] = useState("");
@@ -282,7 +281,6 @@ function EditClientPage() {
     setEmployeeFormDepartmentId(null);
     setEditingEmployeeId(null);
     setEmployeeName("");
-    setEmployeeRegistration("");
     setEmployeeCbo("");
     setEmployeeRole("");
     setEmployeeSalary("");
@@ -298,7 +296,6 @@ function EditClientPage() {
     const employeeData = {
       department_id: employeeFormDepartmentId,
       full_name: employeeName.trim(),
-      registration: employeeRegistration.trim() || null,
       cbo: employeeCbo.trim() || null,
       role: employeeRole.trim() || null,
       salary: parseSalary(employeeSalary),
@@ -336,7 +333,6 @@ function EditClientPage() {
     setEmployeeFormDepartmentId(employee.department_id);
     setEditingEmployeeId(employee.id);
     setEmployeeName(employee.full_name);
-    setEmployeeRegistration(employee.registration ?? "");
     setEmployeeCbo(employee.cbo ?? "");
     setEmployeeRole(employee.role ?? "");
     setEmployeeSalary(employee.salary === null ? "" : formatSalary(employee.salary));
@@ -600,7 +596,6 @@ function EditClientPage() {
                         <h3 className="font-medium">{editingEmployeeId ? "Editar funcionário" : "Novo funcionário"}</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
                           <Field label="Nome Completo"><Input value={employeeName} onChange={(event) => setEmployeeName(event.target.value)} /></Field>
-                          <Field label="Número de Registro"><Input value={employeeRegistration} onChange={(event) => setEmployeeRegistration(event.target.value)} /></Field>
                           <Field label="CBO"><Input value={employeeCbo} onChange={(event) => setEmployeeCbo(event.target.value)} /></Field>
                           <Field label="Função"><Input value={employeeRole} onChange={(event) => setEmployeeRole(event.target.value)} /></Field>
                           <Field label="Salário"><Input inputMode="decimal" placeholder="0,00" value={employeeSalary} onChange={(event) => setEmployeeSalary(event.target.value)} onBlur={() => setEmployeeSalary((value) => value ? formatSalary(value) : "")} /></Field>
@@ -680,7 +675,6 @@ function EditClientPage() {
                       <p className="text-lg font-semibold">{selectedEmployee.full_name}</p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Detail label="Número de Registro" value={selectedEmployee.registration} />
                       <Detail label="CBO" value={selectedEmployee.cbo} />
                       <Detail label="Função" value={selectedEmployee.role} />
                       <Detail label="Salário" value={selectedEmployee.salary === null ? null : formatSalary(selectedEmployee.salary)} />

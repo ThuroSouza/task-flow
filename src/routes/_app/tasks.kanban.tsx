@@ -194,7 +194,7 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
       >
         <div
           ref={setNodeRef}
-          className={`kanban-scroll rounded-lg border-2 border-dashed p-2 transition ${
+          className={`kanban-scroll rounded-lg border-2 border-solid p-2 transition ${
             isH
               ? "flex flex-col gap-2 overflow-y-auto"
               : "flex items-start gap-2 overflow-x-auto overflow-y-hidden"
@@ -289,7 +289,7 @@ function SortableColumn({
       >
         <div
           ref={setDropRef}
-          className={`kanban-scroll rounded-lg border-2 border-dashed border-l-4 p-2 transition ${
+          className={`kanban-scroll rounded-lg border-2 border-solid border-l-4 p-2 transition ${
             isH
               ? "flex flex-col gap-3 overflow-y-auto"
               : "flex items-start gap-4 overflow-x-auto overflow-y-hidden"

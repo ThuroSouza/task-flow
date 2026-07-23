@@ -143,7 +143,7 @@ export function TaskCard({
   dragHandleProps,
 }: Props) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const descTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -162,6 +162,8 @@ export function TaskCard({
   const [commentDraft, setCommentDraft] = useState("");
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [subtaskDraft, setSubtaskDraft] = useState("");
+  const canDeleteSubtask = (subtask: Subtask) =>
+    !!isAdmin || subtask.assignee_id !== user?.id || task.created_by === user?.id;
   const [newSubtask, setNewSubtask] = useState("");
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [commentSubtaskDraft, setCommentSubtaskDraft] = useState<Record<string, string>>({});
@@ -726,9 +728,6 @@ export function TaskCard({
         {...dragHandleProps}
         className={cn(
           "group relative flex h-[510px] w-full cursor-grab touch-none flex-col overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
-          dueState === "overdue" && !isCompletedStatus && "border-destructive ring-2 ring-destructive/50",
-          dueState === "today" && !isCompletedStatus && "border-destructive/70 ring-1 ring-destructive/30",
-          dueState === "tomorrow" && !isCompletedStatus && "border-amber-500/70 ring-1 ring-amber-500/30",
           isActiveStatus && !isCompletedStatus && "z-10 scale-[1.025] shadow-xl ring-2",
           isCompletedStatus && "ring-2 ring-emerald-500/70 border-emerald-500/40",
         )}
@@ -747,18 +746,12 @@ export function TaskCard({
         }}
       >
         {/* Status color bar — visible whenever there's a custom status */}
-        {currentStatus ? (
-          <div
-            className="h-1 w-full rounded-t-lg"
-            style={{ background: currentStatus.color }}
-          />
-        ) : null}
         {/* Client color strip at top */}
         {client?.color ? (
           <div
             className={cn(
               "flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
-              !currentStatus && "rounded-t-lg",
+              "rounded-t-lg",
             )}
             style={{ background: client.color, color: clientText }}
           >
@@ -1144,15 +1137,17 @@ export function TaskCard({
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
-                      <button
-                        type="button"
-                        onPointerDown={stop}
-                        onClick={(e) => { stop(e); void deleteSubtask(s.id); }}
-                        title="Remover"
-                        className="rounded p-0.5 text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      {canDeleteSubtask(s) && (
+                        <button
+                          type="button"
+                          onPointerDown={stop}
+                          onClick={(e) => { stop(e); void deleteSubtask(s.id); }}
+                          title="Remover"
+                          className="rounded p-0.5 text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-1 pl-5">

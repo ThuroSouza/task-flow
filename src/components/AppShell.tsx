@@ -2,11 +2,12 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, ListChecks, Users, Building2, Settings, LogOut, Moon, Sun, PanelLeft, PanelRight, NotebookPen, BarChart3, Trash2, FileUp } from "lucide-react";
+import { LayoutDashboard, ListChecks, Users, Building2, Settings, LogOut, Moon, Sun, PanelLeft, PanelRight, NotebookPen, BarChart3, Trash2, FileUp, UsersRound, CalendarCog, CircleDollarSign, ChevronDown } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AssignmentPopup } from "@/components/AssignmentPopup";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import taskflowLogo from "@/assets/taskflow-logo.png";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -30,6 +31,7 @@ const allNav: readonly NavItem[] = [
   { to: "/import-ata", label: "Importar Ata", icon: FileUp },
   { to: "/clients", label: "Clientes", icon: Building2 },
   { to: "/reports", label: "Relatórios", icon: BarChart3, adminOnly: true },
+  { to: "/portal", label: "Portal do Cliente", icon: UsersRound },
   { to: "/users", label: "Usuários", icon: Users, adminOnly: true },
   { to: "/trash", label: "Lixeira", icon: Trash2 },
   { to: "/settings", label: "Personalizar", icon: Settings },
@@ -37,8 +39,11 @@ const allNav: readonly NavItem[] = [
 
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { profile, user, signOut, isAdmin } = useAuth();
-  const nav = useMemo(() => allNav.filter(n => !n.adminOnly || isAdmin), [isAdmin]);
+  const { profile, user, signOut, isAdmin, hasPermission } = useAuth();
+  const nav = useMemo(() => {
+    const accessByPath: Record<string, string> = { "/dashboard": "dashboard", "/tasks": "tasks", "/notes": "notes", "/import-ata": "import_ata", "/clients": "clients", "/reports": "reports", "/portal": "portal", "/calendario": "calendar", "/users": "users", "/trash": "trash", "/settings": "settings" };
+    return allNav.filter((item) => (!item.adminOnly || isAdmin) && hasPermission(accessByPath[item.to]));
+  }, [isAdmin, hasPermission]);
 
   const { theme, toggle } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -82,6 +87,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 space-y-1 px-3">
           {nav.map((n) => {
+            if (n.to === "/portal") {
+              return <PortalNavGroup key={n.to} expanded={sidebarOpen} active={pathname === "/portal"} />;
+            }
             const Active = pathname === n.to || pathname.startsWith(n.to + "/");
             const Icon = n.icon;
             return (
@@ -154,6 +162,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <nav className="flex-1 space-y-1 px-3">
               {nav.map((n) => {
+                if (n.to === "/portal") {
+                  return <PortalNavGroup key={n.to} expanded active={pathname === "/portal"} onNavigate={() => setSidebarOpen(false)} />;
+                }
                 const Active = pathname === n.to || pathname.startsWith(n.to + "/");
                 const Icon = n.icon;
                 return (
@@ -203,5 +214,37 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       <AssignmentPopup />
     </div>
+  );
+}
+
+function PortalNavGroup({ expanded, active, onNavigate }: { expanded: boolean; active: boolean; onNavigate?: () => void }) {
+  if (!expanded) {
+    return (
+      <Link to="/portal" title="Portal do Cliente" className={`flex justify-center rounded-lg px-2 py-2 text-sm transition ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}>
+        <UsersRound className="h-4 w-4" />
+      </Link>
+    );
+  }
+
+  return (
+    <Collapsible defaultOpen={active} className="space-y-1">
+      <div className={`flex items-center rounded-lg transition ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}>
+        <Link to="/portal" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm">
+          <UsersRound className="h-4 w-4 shrink-0" />
+          <span className="truncate">Portal do Cliente</span>
+        </Link>
+        <CollapsibleTrigger className="mr-1 rounded p-2 hover:bg-sidebar-accent" aria-label="Expandir Portal do Cliente">
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent className="space-y-1 pl-4">
+        <a href="/portal#entregas" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+          <CalendarCog className="h-4 w-4" />Calendário de Entregas
+        </a>
+        <a href="/portal#financeiro" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+          <CircleDollarSign className="h-4 w-4" />Financeiro
+        </a>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

@@ -239,7 +239,7 @@ function ReportsPage() {
       </div>
 
       <UserTable title="Administradores" icon={ShieldCheck} rows={admins} />
-      <UserTable title="Membros" rows={members} icon={UserIcon} />
+      <UserTable title="Colaboradores" rows={members} icon={UserIcon} />
 
       {unassignedRow && (
         <Card className="p-4">
@@ -336,7 +336,7 @@ function ClientByUserTable({ clients, users, tasks }: { clients: any[]; users: a
                 <th key={u.id} className="py-2 px-2 text-center">
                   <div className="flex flex-col items-center">
                     <span>{u.name}</span>
-                    <span className="text-[10px] font-normal text-muted-foreground">{u.isAdmin ? "admin" : "membro"}</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">{u.isAdmin ? "admin" : "colaborador"}</span>
                   </div>
                 </th>
               ))}

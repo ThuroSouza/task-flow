@@ -336,7 +336,6 @@ export type Database = {
           id: string
           department_id: string
           full_name: string
-          registration: string | null
           cbo: string | null
           role: string | null
           salary: number | null
@@ -348,7 +347,6 @@ export type Database = {
           id?: string
           department_id: string
           full_name: string
-          registration?: string | null
           cbo?: string | null
           role?: string | null
           salary?: number | null
@@ -360,7 +358,6 @@ export type Database = {
           id?: string
           department_id?: string
           full_name?: string
-          registration?: string | null
           cbo?: string | null
           role?: string | null
           salary?: number | null

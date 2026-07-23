@@ -1,272 +1,56 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useProfiles, useTasks } from "@/hooks/use-data";
+import { useProfiles } from "@/hooks/use-data";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Archive, UserCheck, UserX, ShieldCheck, User as UserIcon, ArrowRightLeft, Trash2 } from "lucide-react";
+import { Archive, Plus, ShieldCheck, User as UserIcon, UserCheck, UserX } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteUserCompletely } from "@/lib/admin-users.functions";
+import { createUserAccess, updateUserAccess } from "@/lib/admin-users.functions";
 
-export const Route = createFileRoute("/_app/users")({
-  component: UsersPage,
-});
+export const Route = createFileRoute("/_app/users")({ component: UsersPage });
+
+const ACCESS_OPTIONS = [
+  ["dashboard", "Dashboard"], ["tasks", "Tarefas"], ["notes", "Anotações"], ["import_ata", "Importar ata"],
+  ["clients", "Clientes"], ["reports", "Relatórios"], ["portal", "Portal do cliente"], ["calendar", "Calendário"],
+  ["trash", "Lixeira"], ["settings", "Personalizar"],
+] as const;
+type Role = "admin" | "collaborator" | "client";
+type FormState = { fullName: string; email: string; password: string; role: Role; permissions: string[] };
+const defaults: FormState = { fullName: "", email: "", password: "", role: "collaborator", permissions: ["dashboard", "tasks", "notes"] };
+const roleLabel: Record<Role, string> = { admin: "Administrador", collaborator: "Colaboradores", client: "Cliente" };
+
+function AccessForm({ value, onChange, includeCredentials = false }: { value: FormState; onChange: (next: FormState) => void; includeCredentials?: boolean }) {
+  const toggle = (permission: string) => onChange({ ...value, permissions: value.permissions.includes(permission) ? value.permissions.filter((item) => item !== permission) : [...value.permissions, permission] });
+  return <div className="space-y-4">
+    {includeCredentials && <><div className="space-y-2"><Label>Nome completo</Label><Input value={value.fullName} onChange={(e) => onChange({ ...value, fullName: e.target.value })} required /></div><div className="space-y-2"><Label>Login (e-mail)</Label><Input type="email" value={value.email} onChange={(e) => onChange({ ...value, email: e.target.value })} required /></div><div className="space-y-2"><Label>Senha provisória</Label><Input type="password" minLength={6} value={value.password} onChange={(e) => onChange({ ...value, password: e.target.value })} required /></div></>}
+    <div className="space-y-2"><Label>Categoria</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={value.role} onChange={(e) => onChange({ ...value, role: e.target.value as Role, permissions: e.target.value === "client" ? ["portal"] : value.permissions })}><option value="collaborator">Colaboradores</option><option value="client">Cliente</option><option value="admin">Administrador</option></select></div>
+    <div className="space-y-2"><Label>Acessos do sistema</Label><p className="text-xs text-muted-foreground">Administradores possuem acesso completo automaticamente.</p><div className="grid grid-cols-2 gap-2 rounded-md border p-3">{ACCESS_OPTIONS.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={value.role === "admin" || value.permissions.includes(key)} disabled={value.role === "admin"} onCheckedChange={() => toggle(key)} />{label}</label>)}</div></div>
+  </div>;
+}
 
 function UsersPage() {
-  const { isAdmin, user, loading } = useAuth();
-  const qc = useQueryClient();
-  const { data: profiles = [] } = useProfiles();
-  const { data: tasks = [] } = useTasks();
-  const { data: roles = [] } = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => (await supabase.from("user_roles").select("user_id, role")).data ?? [],
-  });
-
-  const setRole = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "member" }) => {
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["roles"] }); toast.success("Papel atualizado"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const setActive = useMutation({
-    mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => {
-      const { error } = await (supabase.from("profiles") as any).update({ is_active: active }).eq("id", userId);
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["profiles"] }); toast.success("Status atualizado"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const reassignTask = useMutation({
-    mutationFn: async ({ taskId, newAssignee }: { taskId: string; newAssignee: string }) => {
-      const { error } = await supabase.from("tasks").update({ assignee_id: newAssignee }).eq("id", taskId);
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tasks"] }); toast.success("Tarefa reatribuída"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const deleteFn = useServerFn(deleteUserCompletely);
-  const deleteUser = useMutation({
-    mutationFn: async (userId: string) => {
-      await deleteFn({ data: { userId } });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["profiles"] });
-      qc.invalidateQueries({ queryKey: ["roles"] });
-      qc.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success("Usuário excluído permanentemente");
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir"),
-  });
-
-  const [reassignTarget, setReassignTarget] = useState<Record<string, string>>({});
-
-  const activeProfiles = useMemo(() => profiles.filter(p => (p as any).is_active !== false), [profiles]);
-  const inactiveProfiles = useMemo(() => profiles.filter(p => (p as any).is_active === false), [profiles]);
-  const orphanTasks = useMemo(() => {
-    const inactiveIds = new Set(inactiveProfiles.map(p => p.id));
-    return tasks.filter(t => t.assignee_id && inactiveIds.has(t.assignee_id));
-  }, [tasks, inactiveProfiles]);
-
-  if (loading) return <div className="p-6 text-sm text-muted-foreground">Carregando…</div>;
-
-  return (
-    <div className="space-y-6 p-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
-        <p className="text-sm text-muted-foreground">
-          {isAdmin ? "Gerencie papéis e acesso da equipe" : "Membros da equipe"}
-        </p>
-      </header>
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Ativos ({activeProfiles.length})</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {activeProfiles.map(p => {
-            const userRoles = roles.filter(r => r.user_id === p.id).map(r => r.role);
-            const isUserAdmin = userRoles.includes("admin");
-            const userTasks = tasks.filter(t => t.assignee_id === p.id);
-            const done = userTasks.filter(t => t.status === "done").length;
-            const isSelf = p.id === user?.id;
-            return (
-              <Card key={p.id} className="p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback style={{ background: p.color || "#1e3a8a", color: "white" }}>
-                      {(p.full_name || p.email || "?").slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-semibold">{p.full_name || "Sem nome"}</h3>
-                    <p className="truncate text-xs text-muted-foreground">{p.email}</p>
-                  </div>
-                  {isUserAdmin ? <ShieldCheck className="h-4 w-4 text-primary" /> : <UserIcon className="h-4 w-4 text-muted-foreground" />}
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {isUserAdmin && <Badge>Admin</Badge>}
-                  {!isUserAdmin && <Badge variant="secondary">Membro</Badge>}
-                  {isSelf && <Badge variant="outline" className="text-xs">Você</Badge>}
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="rounded bg-muted p-2">
-                    <p className="text-lg font-bold">{userTasks.length}</p>
-                    <p className="text-muted-foreground">Total</p>
-                  </div>
-                  <div className="rounded bg-muted p-2">
-                    <p className="text-lg font-bold text-emerald-600">{done}</p>
-                    <p className="text-muted-foreground">Concluídas</p>
-                  </div>
-                </div>
-
-                {isAdmin && !isSelf && (
-                  <div className="mt-3 space-y-2 border-t pt-3">
-                    <Select
-                      value={isUserAdmin ? "admin" : "member"}
-                      onValueChange={(v) => setRole.mutate({ userId: p.id, role: v as "admin" | "member" })}
-                    >
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Membro</SelectItem>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs"
-                      onClick={() => {
-                        if (confirm(`Desativar ${p.full_name || p.email}? As tarefas dele(a) somem do kanban mas continuam visíveis em relatórios.`)) {
-                          setActive.mutate({ userId: p.id, active: false });
-                        }
-                      }}
-                    >
-                      <UserX className="mr-1 h-3 w-3" /> Desativar acesso
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="w-full text-xs"
-                      disabled={deleteUser.isPending}
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `⚠️ EXCLUIR PERMANENTEMENTE ${p.full_name || p.email}?\n\nTudo será apagado: tarefas, anotações, arquivos, tags, status, colunas e o login.\nO email poderá criar uma nova conta do zero.\n\nEsta ação NÃO pode ser desfeita.`,
-                          )
-                        ) {
-                          deleteUser.mutate(p.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="mr-1 h-3 w-3" /> Excluir do sistema
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {isAdmin && inactiveProfiles.length > 0 && (
-        <div>
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <Archive className="h-4 w-4" /> Desativados ({inactiveProfiles.length})
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {inactiveProfiles.map(p => (
-              <Card key={p.id} className="border-dashed p-4 opacity-75">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 grayscale">
-                    <AvatarFallback style={{ background: "#64748b", color: "white" }}>
-                      {(p.full_name || p.email || "?").slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-sm font-semibold">{p.full_name || "Sem nome"}</h3>
-                    <p className="truncate text-xs text-muted-foreground">{p.email}</p>
-                  </div>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <Button
-                    size="sm"
-                    className="text-xs"
-                    variant="outline"
-                    onClick={() => setActive.mutate({ userId: p.id, active: true })}
-                  >
-                    <UserCheck className="mr-1 h-3 w-3" /> Reativar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="text-xs"
-                    disabled={deleteUser.isPending}
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `⚠️ EXCLUIR PERMANENTEMENTE ${p.full_name || p.email}?\n\nTudo será apagado e o email poderá criar uma nova conta do zero.\nEsta ação NÃO pode ser desfeita.`,
-                        )
-                      ) {
-                        deleteUser.mutate(p.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="mr-1 h-3 w-3" /> Excluir
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isAdmin && orphanTasks.length > 0 && (
-        <Card className="p-4">
-          <h2 className="mb-2 flex items-center gap-2 font-semibold">
-            <ArrowRightLeft className="h-4 w-4" /> Tarefas de membros desativados ({orphanTasks.length})
-          </h2>
-          <p className="mb-3 text-xs text-muted-foreground">Reatribua para um membro ativo.</p>
-          <div className="space-y-2">
-            {orphanTasks.map(t => {
-              const target = reassignTarget[t.id] ?? "";
-              return (
-                <div key={t.id} className="flex flex-wrap items-center gap-2 rounded border p-2 text-sm">
-                  <span className="flex-1 truncate">{t.title}</span>
-                  <Select value={target} onValueChange={(v) => setReassignTarget(s => ({ ...s, [t.id]: v }))}>
-                    <SelectTrigger className="h-8 w-48 text-xs"><SelectValue placeholder="Escolher membro…" /></SelectTrigger>
-                    <SelectContent>
-                      {activeProfiles.map(ap => (
-                        <SelectItem key={ap.id} value={ap.id}>{ap.full_name || ap.email}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    disabled={!target}
-                    onClick={() => reassignTask.mutate({ taskId: t.id, newAssignee: target })}
-                  >
-                    Reatribuir
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      {!isAdmin && <Navigate to="/dashboard" />}
-    </div>
-  );
+  const { isAdmin, user, loading } = useAuth(); const qc = useQueryClient(); const { data: profiles = [] } = useProfiles();
+  const [createOpen, setCreateOpen] = useState(false); const [editing, setEditing] = useState<string | null>(null); const [form, setForm] = useState<FormState>(defaults);
+  const { data: roles = [] } = useQuery({ queryKey: ["roles"], queryFn: async () => (await supabase.from("user_roles").select("user_id, role")).data ?? [] });
+  const { data: permissionRows = [] } = useQuery({ queryKey: ["user_permissions"], queryFn: async () => ((await (supabase.from("user_permissions") as any).select("user_id, permissions")).data ?? []) as { user_id: string; permissions: string[] }[] });
+  const create = useServerFn(createUserAccess); const update = useServerFn(updateUserAccess);
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["profiles"] }); qc.invalidateQueries({ queryKey: ["roles"] }); qc.invalidateQueries({ queryKey: ["user_permissions"] }); };
+  const createMutation = useMutation({ mutationFn: () => create({ data: form }), onSuccess: () => { refresh(); setCreateOpen(false); setForm(defaults); toast.success("Acesso criado com sucesso."); }, onError: (e: any) => toast.error(e?.message ?? "Erro ao criar acesso") });
+  const updateMutation = useMutation({ mutationFn: () => update({ data: { userId: editing!, role: form.role, permissions: form.permissions } }), onSuccess: () => { refresh(); setEditing(null); toast.success("Acessos atualizados."); }, onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar acessos") });
+  const setActive = useMutation({ mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => { const { error } = await (supabase.from("profiles") as any).update({ is_active: active }).eq("id", userId); if (error) throw error; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["profiles"] }); toast.success("Status atualizado"); }, onError: (e: any) => toast.error(e.message) });
+  const activeProfiles = useMemo(() => profiles.filter((p) => (p as any).is_active !== false), [profiles]); const inactiveProfiles = useMemo(() => profiles.filter((p) => (p as any).is_active === false), [profiles]);
+  const openEdit = (id: string) => { const role = (roles.find((r: { user_id: string; role: string }) => r.user_id === id)?.role ?? "collaborator") as Role; setForm({ ...defaults, role, permissions: permissionRows.find((p) => p.user_id === id)?.permissions ?? [] }); setEditing(id); };
+  if (loading) return <div className="p-6 text-sm text-muted-foreground">Carregando…</div>; if (!isAdmin) return <Navigate to="/dashboard" />;
+  const renderProfile = (p: any) => { const role = (roles.find((r: { user_id: string; role: string }) => r.user_id === p.id)?.role ?? "collaborator") as Role; const self = p.id === user?.id; return <Card key={p.id} className="p-4"><div className="flex items-center gap-3"><Avatar className="h-12 w-12"><AvatarFallback style={{ background: p.color || "#1e3a8a", color: "white" }}>{(p.full_name || p.email || "?").slice(0, 2).toUpperCase()}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><h3 className="truncate font-semibold">{p.full_name || "Sem nome"}</h3><p className="truncate text-xs text-muted-foreground">{p.email}</p></div>{role === "admin" ? <ShieldCheck className="h-4 w-4 text-primary" /> : <UserIcon className="h-4 w-4 text-muted-foreground" />}</div><div className="mt-3 flex gap-1"><Badge variant={role === "admin" ? "default" : "secondary"}>{roleLabel[role]}</Badge>{self && <Badge variant="outline">Você</Badge>}</div><div className="mt-3 border-t pt-3"><Button size="sm" variant="outline" className="w-full" onClick={() => openEdit(p.id)}>Definir categoria e acessos</Button>{!self && <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => setActive.mutate({ userId: p.id, active: false })}><UserX className="mr-1 h-3 w-3" /> Desativar acesso</Button>}</div></Card>; };
+  return <div className="space-y-6 p-6"><header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-bold tracking-tight">Usuários</h1><p className="text-sm text-muted-foreground">Crie logins e defina os acessos de cada usuário.</p></div><Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Novo usuário</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Criar acesso</DialogTitle><DialogDescription>O login e a senha abaixo dão acesso ao sistema conforme as permissões escolhidas.</DialogDescription></DialogHeader><AccessForm value={form} onChange={setForm} includeCredentials /><DialogFooter><Button disabled={createMutation.isPending} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Criando…" : "Criar acesso"}</Button></DialogFooter></DialogContent></Dialog></header><div><h2 className="mb-3 text-sm font-semibold text-muted-foreground">Ativos ({activeProfiles.length})</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{activeProfiles.map(renderProfile)}</div></div>{inactiveProfiles.length > 0 && <div><h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Archive className="h-4 w-4" /> Desativados ({inactiveProfiles.length})</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{inactiveProfiles.map((p: any) => <Card key={p.id} className="border-dashed p-4 opacity-75"><p className="font-medium">{p.full_name || p.email}</p><Button size="sm" className="mt-3 w-full" variant="outline" onClick={() => setActive.mutate({ userId: p.id, active: true })}><UserCheck className="mr-1 h-3 w-3" /> Reativar acesso</Button></Card>)}</div></div>}<Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}><DialogContent><DialogHeader><DialogTitle>Definir acessos</DialogTitle><DialogDescription>Escolha a categoria e as áreas disponíveis no menu para este usuário.</DialogDescription></DialogHeader><AccessForm value={form} onChange={setForm} /><DialogFooter><Button disabled={updateMutation.isPending} onClick={() => updateMutation.mutate()}>{updateMutation.isPending ? "Salvando…" : "Salvar acessos"}</Button></DialogFooter></DialogContent></Dialog></div>;
 }

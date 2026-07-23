@@ -33,7 +33,7 @@ const LINK_MIME = "text/uri-list";
 
 export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { data: cols } = useColumns();
   const { data: clients } = useClients();
   const { data: profiles } = useProfiles();
@@ -66,6 +66,9 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [saving, setSaving] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const canDeleteTask = !!currentTaskId && (!!isAdmin || !task || task.created_by === user?.id);
+  const canDeleteSubtask = (subtask: Subtask) =>
+    !!isAdmin || subtask.assignee_id !== user?.id || task?.created_by === user?.id;
 
   // Recurrence (only used on create)
   const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
@@ -152,6 +155,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
     if (existingId) return existingId;
     if (!user) return null;
     if (!title.trim()) { toast.error("Defina um título antes de adicionar itens"); return null; }
+    if (!dueDate && !recurrenceEnabled) { toast.error("Defina um prazo antes de criar a tarefa"); return null; }
     const { data, error } = await supabase.from("tasks").insert({ ...buildPayload(), created_by: user.id }).select().single();
     if (error) { toast.error(error.message); return null; }
     currentTaskIdRef.current = data.id as string;
@@ -195,10 +199,14 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
   const save = async () => {
     if (!title.trim()) { toast.error("Título é obrigatório"); return; }
     if (!user) return;
+    const existingTaskId = currentTaskIdRef.current ?? currentTaskId;
+    if (!existingTaskId && !recurrenceEnabled && !dueDate) {
+      toast.error("Prazo é obrigatório para criar uma tarefa");
+      return;
+    }
     setSaving(true);
     try {
       const payload = buildPayload();
-      const existingTaskId = currentTaskIdRef.current ?? currentTaskId;
       if (existingTaskId) {
         const { error } = await supabase.from("tasks").update(payload).eq("id", existingTaskId);
         if (error) throw error;
@@ -466,9 +474,17 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Prazo</Label>
+              <Label className="text-xs">
+                Prazo {!task ? <span className="text-destructive">*</span> : null}
+              </Label>
               <div className="flex items-center gap-1.5">
-                <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="flex-1" />
+                <Input
+                  type="datetime-local"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="flex-1"
+                  required={!task && !recurrenceEnabled}
+                />
                 {dueDate && (
                   <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => setDueDate("")} title="Sem prazo">
                     <X className="h-4 w-4" />
@@ -617,7 +633,9 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleSubExpanded(s.id)} title="Detalhes">
                           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteSubtask(s.id)}><X className="h-3.5 w-3.5" /></Button>
+                        {canDeleteSubtask(s) && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteSubtask(s.id)}><X className="h-3.5 w-3.5" /></Button>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 pl-6">
                         <Label className="text-[10px] text-muted-foreground">Prazo</Label>
@@ -795,7 +813,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
 
           <div className="flex justify-between gap-2 pt-2">
             <div>
-              {currentTaskId && (
+              {currentTaskId && canDeleteTask && (
                 <Button variant="ghost" onClick={remove} className="text-destructive hover:text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" /> Excluir
                 </Button>

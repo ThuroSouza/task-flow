@@ -84,7 +84,6 @@ export interface ClientDepartmentEmployee {
   id: string;
   department_id: string;
   full_name: string;
-  registration: string | null;
   cbo: string | null;
   role: string | null;
   salary: number | null;
@@ -99,6 +98,34 @@ export interface Profile {
   color: string | null;
   avatar_url: string | null;
   is_active?: boolean;
+}
+
+export interface ClientInvoice {
+  id: string;
+  client_id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  status: "open" | "paid";
+  paid_at: string | null;
+  payment_method: "pix" | "boleto" | "link";
+  payment_link: string | null;
+  created_at: string;
+}
+
+export function useClientInvoices() {
+  return useQuery({
+    queryKey: ["client_invoices"],
+    queryFn: async () => {
+      // The generated Supabase types are refreshed separately; this cast keeps the
+      // new migration usable immediately in the application.
+      const { data, error } = await (supabase.from("client_invoices") as any)
+        .select("*")
+        .order("due_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as ClientInvoice[];
+    },
+  });
 }
 
 

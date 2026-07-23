@@ -56,7 +56,7 @@ export function InlineTaskEditor({
   dragHandleProps,
 }: Props) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: task.title,
@@ -73,6 +73,7 @@ export function InlineTaskEditor({
   const [saving, setSaving] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const canDeleteTask = !!isAdmin || task.created_by === user?.id;
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
@@ -615,9 +616,11 @@ export function InlineTaskEditor({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2">
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => void remove()}>
-            <Trash2 className="mr-1 h-3 w-3" />Excluir
-          </Button>
+          {canDeleteTask && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => void remove()}>
+              <Trash2 className="mr-1 h-3 w-3" />Excluir
+            </Button>
+          )}
           <div className="flex items-center gap-1">
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void toggleDone()}>
               {form.status === "done" ? (
