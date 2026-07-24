@@ -3,14 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useClients, useTasks } from "@/hooks/use-data";
+import { useClients } from "@/hooks/use-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
-  Plus, Trash2, Highlighter, Bold, Italic, Underline, Eraser, NotebookPen, Link2, ExternalLink,
+  Plus, Trash2, Highlighter, Bold, Italic, Underline, Eraser, NotebookPen, ExternalLink,
   ArrowUp, ArrowDown, Paperclip, FileText, Save, Sparkles, FileDown, Maximize2, Minimize2, Check, Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -271,7 +271,6 @@ function openNotePrintPreview({
 function NotesPage() {
   const { user } = useAuth();
   const { data: clients = [] } = useClients();
-  const { data: tasks = [] } = useTasks();
 
   const [clientId, setClientId] = useState<string | null>(null);
   const [notes, setNotes] = useState<ClientNote[]>([]);
@@ -394,10 +393,6 @@ function NotesPage() {
   };
 
   const selected = useMemo(() => notes.find((n) => n.id === selectedId) ?? null, [notes, selectedId]);
-  const clientTasks = useMemo(
-    () => (clientId ? tasks.filter((t) => t.client_id === clientId) : tasks),
-    [tasks, clientId],
-  );
 
   return (
     <div className="flex h-[calc(100vh-0px)] flex-col">
@@ -408,7 +403,7 @@ function NotesPage() {
               <NotebookPen className="h-6 w-6" /> Anotações
             </h1>
             <p className="text-sm text-muted-foreground">
-              Anotações dedicadas por cliente, com data, grifos, anexos e vínculo a cards do Kanban.
+              Anotações dedicadas por cliente, com data, grifos e anexos.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -459,7 +454,6 @@ function NotesPage() {
             ) : (
               <ul className="space-y-1">
                 {filteredNotes.map((n, i) => {
-                  const linkedTask = n.task_id ? tasks.find((t) => t.id === n.task_id) : null;
                   return (
                     <li key={n.id} className="flex items-stretch gap-1">
                       {sortMode === "manual" && (
@@ -497,11 +491,6 @@ function NotesPage() {
                             {n.note_date ? format(parseISO(n.note_date), "dd/MM", { locale: ptBR }) : ""}
                           </span>
                         </div>
-                        {linkedTask && (
-                          <p className="mt-0.5 line-clamp-1 text-[10px] text-primary">
-                            <Link2 className="mr-0.5 inline h-3 w-3" />{linkedTask.title}
-                          </p>
-                        )}
                         <p
                           className="mt-1 line-clamp-2 text-[11px] text-muted-foreground"
                           dangerouslySetInnerHTML={{
@@ -523,7 +512,6 @@ function NotesPage() {
             <NoteEditor
               key={selected.id}
               note={selected}
-              tasks={clientTasks}
               onPatch={(p) => patchNote(selected.id, p)}
               onSave={(p) => persistNote(selected.id, p)}
               onDelete={() => deleteNote(selected.id)}
@@ -540,10 +528,9 @@ function NotesPage() {
 }
 
 function NoteEditor({
-  note, tasks, onPatch, onSave, onDelete,
+  note, onPatch, onSave, onDelete,
 }: {
   note: ClientNote;
-  tasks: { id: string; title: string }[];
   onPatch: (p: Partial<ClientNote>) => void;
   onSave: (p: Partial<ClientNote>) => Promise<void>;
   onDelete: () => void;
@@ -552,17 +539,17 @@ function NoteEditor({
   const aiFormat = useServerFn(formatNoteWithAI);
   const [title, setTitle] = useState(note.title);
   const [noteDate, setNoteDate] = useState(note.note_date ?? new Date().toISOString().slice(0, 10));
-  const [taskId, setTaskId] = useState<string | null>(note.task_id ?? null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fsEditorRef = useRef<HTMLDivElement>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPatch = useRef<Partial<ClientNote>>({});
   const syncingRef = useRef(false);
+  const selectedTextRangeRef = useRef<Range | null>(null);
 
   const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
   const [fullscreen, setFullscreen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [editorHtml, setEditorHtml] = useState(note.content_html ?? note.content ?? "");
+  const [highlightColor, setHighlightColor] = useState<string | null>(null);
 
   const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [attUrls, setAttUrls] = useState<Record<string, string>>({});
@@ -583,7 +570,7 @@ function NoteEditor({
     setEditorsHTML(note.content_html ?? note.content ?? "");
     setTitle(note.title);
     setNoteDate(note.note_date ?? new Date().toISOString().slice(0, 10));
-    setTaskId(note.task_id ?? null);
+    setHighlightColor(null);
     pendingPatch.current = {};
     setSaveState("idle");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -640,22 +627,11 @@ function NoteEditor({
     }
   }, [onSave]);
 
-  const queueSave = useCallback((patch: Partial<ClientNote>) => {
+  const stageChange = useCallback((patch: Partial<ClientNote>) => {
     onPatch(patch);
     pendingPatch.current = { ...pendingPatch.current, ...patch };
     setSaveState("dirty");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { void doSave(); }, 800);
-  }, [onPatch, doSave]);
-
-  const flushNow = useCallback((patch?: Partial<ClientNote>) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    if (patch) {
-      onPatch(patch);
-      pendingPatch.current = { ...pendingPatch.current, ...patch };
-    }
-    void doSave();
-  }, [doSave, onPatch]);
+  }, [onPatch]);
 
   // Save on unmount / before unload
   useEffect(() => {
@@ -668,34 +644,15 @@ function NoteEditor({
     window.addEventListener("beforeunload", handler);
     return () => {
       window.removeEventListener("beforeunload", handler);
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      if (Object.keys(pendingPatch.current).length) void doSave();
     };
-  }, [doSave, saveState]);
-
-  // Ctrl+S manual save
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        flushNow();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [flushNow]);
+  }, [saveState]);
 
   const getActiveEditor = () => (fullscreen ? fsEditorRef.current : editorRef.current);
 
-  const applyEditorChange = useCallback((html: string, flush = false) => {
+  const applyEditorChange = useCallback((html: string) => {
     setEditorsHTML(html);
-    const text = extractTextFromHtml(html);
-    if (flush) {
-      flushNow({ content_html: html, content: text });
-      return;
-    }
-    queueSave({ content_html: html, content: text });
-  }, [flushNow, queueSave, setEditorsHTML]);
+    stageChange({ content_html: html, content: extractTextFromHtml(html) });
+  }, [setEditorsHTML, stageChange]);
 
   const exec = (cmd: string, value?: string) => {
     const ed = getActiveEditor();
@@ -703,6 +660,39 @@ function NoteEditor({
     document.execCommand(cmd, false, value);
     const html = ed?.innerHTML ?? "";
     applyEditorChange(html);
+  };
+
+  const applyHighlightColor = (color: string) => {
+    setHighlightColor(color);
+    exec("hiliteColor", color);
+  };
+
+  const preserveSelectedText = () => {
+    const ed = getActiveEditor();
+    const selection = window.getSelection();
+    if (!ed || !selection?.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    if (ed.contains(range.commonAncestorContainer)) {
+      selectedTextRangeRef.current = range.cloneRange();
+    }
+  };
+
+  const clearHighlight = () => {
+    const ed = getActiveEditor();
+    const savedRange = selectedTextRangeRef.current;
+    ed?.focus();
+
+    if (savedRange) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(savedRange);
+    }
+
+    // Alguns navegadores usam `backColor` e outros `hiliteColor` para o grifo.
+    document.execCommand("hiliteColor", false, "transparent");
+    document.execCommand("backColor", false, "transparent");
+    selectedTextRangeRef.current = null;
+    applyEditorChange(ed?.innerHTML ?? "");
   };
 
   const onEditorInput = (which: "main" | "fs") => {
@@ -735,7 +725,7 @@ function NoteEditor({
     setAiLoading(true);
     try {
       const res = await aiFormat({ data: { html, title } });
-      applyEditorChange(res.html, true);
+      applyEditorChange(res.html);
       toast.success("Texto reformatado pela IA.");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao reformatar.");
@@ -791,7 +781,6 @@ function NoteEditor({
     if (u) window.open(u, "_blank", "noopener,noreferrer");
   };
 
-  const linkedTask = taskId ? tasks.find((t) => t.id === taskId) : null;
 
   const SaveBadge = (
     <span
@@ -825,20 +814,20 @@ function NoteEditor({
         <Underline className="h-4 w-4" />
       </Button>
       <div className="mx-1 h-5 w-px bg-border" />
-      <Button type="button" variant="ghost" size="sm" onClick={() => exec("hiliteColor", "#fde047")} title="Grifar amarelo" className="text-yellow-700 dark:text-yellow-400">
+      <Button type="button" variant="ghost" size="sm" onClick={() => applyHighlightColor("#fde047")} title="Grifar amarelo" className={highlightColor === "#fde047" ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" : "text-yellow-700 dark:text-yellow-400"}>
         <Highlighter className="h-4 w-4" /><span className="ml-1 text-xs">Amarelo</span>
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => exec("hiliteColor", "#86efac")} title="Grifar verde" className="text-green-700 dark:text-green-400">
+      <Button type="button" variant="ghost" size="sm" onClick={() => applyHighlightColor("#86efac")} title="Grifar verde" className={highlightColor === "#86efac" ? "bg-green-500/15 text-green-700 dark:text-green-400" : "text-green-700 dark:text-green-400"}>
         <Highlighter className="h-4 w-4" /><span className="ml-1 text-xs">Verde</span>
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => exec("hiliteColor", "#fca5a5")} title="Grifar vermelho" className="text-red-700 dark:text-red-400">
+      <Button type="button" variant="ghost" size="sm" onClick={() => applyHighlightColor("#fca5a5")} title="Grifar vermelho" className={highlightColor === "#fca5a5" ? "bg-red-500/15 text-red-700 dark:text-red-400" : "text-red-700 dark:text-red-400"}>
         <Highlighter className="h-4 w-4" /><span className="ml-1 text-xs">Vermelho</span>
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => exec("hiliteColor", "#93c5fd")} title="Grifar azul" className="text-blue-700 dark:text-blue-400">
+      <Button type="button" variant="ghost" size="sm" onClick={() => applyHighlightColor("#93c5fd")} title="Grifar azul" className={highlightColor === "#93c5fd" ? "bg-blue-500/15 text-blue-700 dark:text-blue-400" : "text-blue-700 dark:text-blue-400"}>
         <Highlighter className="h-4 w-4" /><span className="ml-1 text-xs">Azul</span>
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => exec("hiliteColor", "transparent")} title="Limpar grifo">
-        <Eraser className="h-4 w-4" />
+      <Button type="button" variant="ghost" size="sm" onPointerDown={(e) => { preserveSelectedText(); e.preventDefault(); }} onClick={clearHighlight} title="Remover grifo do texto selecionado">
+        <Eraser className="h-4 w-4" /><span className="ml-1 text-xs">Remover grifo</span>
       </Button>
       <div className="mx-1 h-5 w-px bg-border" />
       <Button type="button" variant="ghost" size="sm" onClick={runAIFormat} disabled={aiLoading} title="Reformatar texto com IA">
@@ -854,7 +843,7 @@ function NoteEditor({
       </Button>
       <div className="ml-auto flex items-center gap-2 pr-1">
         {SaveBadge}
-        <Button type="button" size="sm" onClick={() => flushNow()} disabled={saveState === "saving"}>
+        <Button type="button" size="sm" onClick={() => void doSave()} disabled={saveState === "saving"}>
           <Save className="mr-1 h-4 w-4" /> Salvar
         </Button>
       </div>
@@ -865,17 +854,22 @@ function NoteEditor({
     <>
       <Card className="mx-auto flex h-full max-w-4xl flex-col overflow-hidden">
         <div className="space-y-3 border-b p-4">
-          <div className="flex items-start gap-2">
-            <Input
-              value={title}
-              onChange={(e) => { setTitle(e.target.value); queueSave({ title: e.target.value }); }}
-              onBlur={() => flushNow({ title })}
-              placeholder="Título da anotação"
-              className="h-11 flex-1 border-0 px-1 text-xl font-semibold shadow-none focus-visible:ring-0"
-            />
-            <Button variant="ghost" size="icon" className="text-destructive" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <div className="space-y-1.5">
+            <label htmlFor="note-title" className="block px-1 text-[11px] font-bold uppercase tracking-widest text-primary">
+              Título da anotação
+            </label>
+            <div className="flex items-start gap-2">
+              <Input id="note-title"
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); stageChange({ title: e.target.value }); }}
+                onBlur={() => stageChange({ title })}
+                placeholder="Título da anotação"
+                className="h-12 flex-1 rounded-lg border-primary/25 bg-primary/5 px-3 text-xl font-bold shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+              />
+              <Button variant="ghost" size="icon" className="mt-1 text-destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -884,39 +878,10 @@ function NoteEditor({
               <Input
                 type="date"
                 value={noteDate}
-                onChange={(e) => { setNoteDate(e.target.value); flushNow({ note_date: e.target.value }); }}
+                onChange={(e) => { setNoteDate(e.target.value); stageChange({ note_date: e.target.value }); }}
                 className="h-8 w-[160px]"
               />
             </label>
-
-            <label className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Card:</span>
-              <Select
-                value={taskId ?? "__none__"}
-                onValueChange={(v) => {
-                  const next = v === "__none__" ? null : v;
-                  setTaskId(next);
-                  flushNow({ task_id: next });
-                }}
-              >
-                <SelectTrigger className="h-8 w-[260px]">
-                  <SelectValue placeholder="Vincular a um card…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— Nenhum —</SelectItem>
-                  {tasks.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-
-            {linkedTask && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                <Link2 className="h-3 w-3" /> {linkedTask.title}
-                <ExternalLink className="h-3 w-3 opacity-60" />
-              </span>
-            )}
           </div>
 
           {Toolbar}
@@ -929,12 +894,12 @@ function NoteEditor({
             suppressContentEditableWarning
             onInput={() => onEditorInput("main")}
             onPaste={onPaste}
-            onBlur={() => flushNow({
+            onBlur={() => stageChange({
               content_html: editorRef.current?.innerHTML ?? "",
               content: editorRef.current?.innerText ?? "",
             })}
             className="prose prose-sm dark:prose-invert min-h-[360px] max-w-none rounded-md border border-dashed bg-background p-5 text-base leading-relaxed outline-none transition focus:border-primary focus:bg-card focus:shadow-lg focus:ring-2 focus:ring-primary/30"
-            data-placeholder="Escreva sua anotação aqui… (Ctrl+S para salvar, botão Foco para tela cheia)"
+            data-placeholder="Escreva sua anotação aqui… (use o botão Salvar para registrar as alterações)"
           />
 
           {/* Anexos */}
@@ -1026,7 +991,7 @@ function NoteEditor({
           <div className="flex items-center gap-2">
             <Input
               value={title}
-              onChange={(e) => { setTitle(e.target.value); queueSave({ title: e.target.value }); }}
+              onChange={(e) => { setTitle(e.target.value); stageChange({ title: e.target.value }); }}
               placeholder="Título da anotação"
               className="h-11 flex-1 border-0 px-1 text-2xl font-bold shadow-none focus-visible:ring-0"
             />
@@ -1041,7 +1006,7 @@ function NoteEditor({
             suppressContentEditableWarning
             onInput={() => onEditorInput("fs")}
             onPaste={onPaste}
-            onBlur={() => flushNow({
+            onBlur={() => stageChange({
               content_html: fsEditorRef.current?.innerHTML ?? "",
               content: fsEditorRef.current?.innerText ?? "",
             })}

@@ -5,6 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { Check, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   useTasks,
   useColumns,
@@ -18,7 +19,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { TaskFilters, applyTaskFilters, type TaskFilterValue } from "@/components/TaskFilters";
 import { TaskDialog } from "@/components/TaskDialog";
-import { priorityColors, priorityLabels, statusLabels } from "@/lib/task-utils";
+import { priorityColors, priorityLabels } from "@/lib/task-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,7 +41,7 @@ function ListPage() {
   const { data: collaborators = [] } = useTaskCollaborators();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  useColumns();
+  const { data: columns = [] } = useColumns();
   const search = Route.useSearch();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<TaskFilterValue>(() =>
@@ -145,29 +146,32 @@ function ListPage() {
       <TaskFilters filters={filters} onChange={setFilters} />
 
       <div className="overflow-hidden rounded-lg border bg-card">
-        <table className="w-full border-collapse text-sm">
-          <thead className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <table className="w-full table-fixed border-collapse text-xs">
+          <thead className="border-b bg-muted/50 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="border-r px-4 py-3">Tarefa</th>
-              <th className="border-r px-4 py-3">Cliente</th>
-              <th className="border-r px-4 py-3">Responsável</th>
-              <th className="border-r px-4 py-3">Status</th>
-              <th className="border-r px-4 py-3">Prioridade</th>
-              <th className="border-r px-4 py-3">Prazo</th>
-              <th className="w-14 px-4 py-3 text-center">Concluir</th>
+              <th className="w-[29%] border-r px-2 py-2">Tarefa</th>
+              <th className="w-[11%] border-r px-2 py-2">Cliente</th>
+              <th className="w-[13%] border-r px-2 py-2">Responsável</th>
+              <th className="w-[12%] border-r px-2 py-2">Colaboradores</th>
+              <th className="w-[10%] border-r px-2 py-2">Status</th>
+              <th className="w-[10%] border-r px-2 py-2">Prioridade</th>
+              <th className="w-[10%] border-r px-2 py-2">Prazo</th>
+              <th className="w-[5%] px-1 py-2 text-center">Concluir</th>
             </tr>
           </thead>
           <tbody>
             {list.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-10 text-center text-muted-foreground">
+                <td colSpan={8} className="py-10 text-center text-muted-foreground">
                   Nenhuma tarefa
                 </td>
               </tr>
             ) : list.map((t) => {
               const client = clients.find((c) => c.id === t.client_id);
               const assignee = profiles.find((p) => p.id === t.assignee_id);
+              const statusColumn = columns.find((column) => column.id === t.column_id);
               const overdue = t.due_date && isPast(new Date(t.due_date)) && t.status !== "done";
+              const taskCollaborators = collaborators.filter((collaborator) => collaborator.task_id === t.id).map((collaborator) => profiles.find((profile) => profile.id === collaborator.collaborator_id)).filter(Boolean);
 
               return (
                 <tr
@@ -178,8 +182,8 @@ function ListPage() {
                     setOpen(true);
                   }}
                 >
-                  <td className="border-r px-4 py-3 font-medium">{t.title}</td>
-                  <td className="border-r px-4 py-3">
+                  <td className="border-r px-2 py-2 font-medium"><span className="block truncate">{t.title}</span></td>
+                  <td className="border-r px-2 py-2">
                     {client ? (
                       <Badge variant="outline" style={{ borderColor: client.color ?? undefined }}>
                         {client.name}
@@ -188,17 +192,28 @@ function ListPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="border-r px-4 py-3 text-muted-foreground">
+                  <td className="border-r px-2 py-2 text-muted-foreground">
                     {assignee?.full_name || assignee?.email || "—"}
                   </td>
-                  <td className="border-r px-4 py-3">
-                    {t.status ? (
-                      <Badge variant="secondary">{statusLabels[t.status]}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                  <td className="border-r px-2 py-2">
+                    {taskCollaborators.length > 0 ? (
+                      <div className="flex -space-x-1" title={taskCollaborators.map((p: any) => p.full_name || p.email).join(", ")}>
+                        {taskCollaborators.slice(0, 3).map((person: any) => {
+                          const name = person.full_name || person.email || "Usuário";
+                          return <Avatar key={person.id} className="h-5 w-5 border border-background"><AvatarImage src={person.avatar_url || undefined} alt={name} /><AvatarFallback className="text-[8px]">{name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>;
+                        })}
+                        {taskCollaborators.length > 3 ? <span className="ml-1 text-[10px] text-muted-foreground">+{taskCollaborators.length - 3}</span> : null}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="border-r px-4 py-3">
+                  <td className="border-r px-2 py-2">
+                    {statusColumn ? (
+                      <Badge variant="outline" className="max-w-full truncate" style={{ borderColor: statusColumn.color || undefined, color: statusColumn.color || undefined }}>
+                        {statusColumn.name}
+                      </Badge>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="border-r px-2 py-2">
                     {t.priority ? (
                       <Badge
                         variant="outline"
@@ -213,10 +228,10 @@ function ListPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className={`border-r px-4 py-3 ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>
+                  <td className={`border-r px-2 py-2 whitespace-nowrap ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>
                     {t.due_date ? format(new Date(t.due_date), "dd MMM yyyy", { locale: ptBR }) : "—"}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-1 py-2 text-center">
                     <Button
                       size="icon"
                       variant="ghost"

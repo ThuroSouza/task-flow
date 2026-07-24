@@ -1426,6 +1426,18 @@ export function TaskCard({
           </div>
         ) : null}
 
+        {task.completed_at ? (
+          <div className="flex flex-wrap items-center gap-1" style={{ order: orderOf("createdAt") + 0.1 }}>
+            <span
+              className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300"
+              title={`Concluída em ${format(new Date(task.completed_at), "dd/MM/yyyy", { locale: ptBR })}`}
+            >
+              <CheckCircle2 className="h-2.5 w-2.5" />
+              Concluída · {format(new Date(task.completed_at), "dd MMM", { locale: ptBR })}
+            </span>
+          </div>
+        ) : null}
+
         <div className="mt-1 space-y-0.5" style={{ order: orderOf("meta") }}>
           <div className="flex items-center gap-1.5 px-1 py-0.5 text-[11px] text-muted-foreground">
             <UserIcon className="h-3 w-3 shrink-0" />

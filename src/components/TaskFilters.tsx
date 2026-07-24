@@ -20,7 +20,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { useClients, useProfiles } from "@/hooks/use-data";
+import { useClients, useColumns, useProfiles } from "@/hooks/use-data";
 
 import { dateFilterLabels, matchDateFilter, type DateFilter } from "@/lib/task-utils";
 
@@ -33,6 +33,7 @@ interface Filters {
   clients?: string[]; // multi-select
   assignee?: string;
   priority?: string;
+  status?: string;
 }
 
 const DATE_OPTIONS: DateFilter[] = [
@@ -51,6 +52,7 @@ const DATE_OPTIONS: DateFilter[] = [
 export function TaskFilters({ filters, onChange, children }: { filters: Filters; onChange: (f: Filters) => void; children?: ReactNode }) {
   const { data: clients } = useClients();
   const { data: profiles } = useProfiles();
+  const { data: columns = [] } = useColumns();
   const [clientsOpen, setClientsOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -96,6 +98,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
     selectedClients.length > 0,
     !!filters.assignee,
     !!filters.priority,
+    !!filters.status,
   ].filter(Boolean).length;
 
   const clearAll = () => onChange({});
@@ -237,7 +240,21 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
               <SelectItem value="urgent">Urgente</SelectItem>
             </SelectContent>
           </Select>
-      {activeCount > 0 && (
+          {/* Status (Kanban column) */}
+          <Select
+            value={filters.status ?? "all"}
+            onValueChange={(v) => onChange({ ...filters, status: v === "all" ? undefined : v })}
+          >
+            <SelectTrigger className="h-7 w-36">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos status</SelectItem>
+              {columns.map((column) => (
+                <SelectItem key={column.id} value={column.id}>{column.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>      {activeCount > 0 && (
         <Button size="sm" variant="ghost" className="h-7 ml-auto text-muted-foreground" onClick={clearAll}>
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
           Limpar ({activeCount})
@@ -288,6 +305,7 @@ export function applyTaskFilters<
     client_id: string | null;
     assignee_id: string | null;
     priority: string | null;
+    column_id: string | null;
     created_by?: string | null;
     due_date: string | null;
     status: string | null;
@@ -325,6 +343,7 @@ export function applyTaskFilters<
       if (t.assignee_id !== f.assignee && !assigneeSubtasks?.has(t.id)) return false;
     }
     if (f.priority && t.priority !== f.priority) return false;
+    if (f.status && t.column_id !== f.status) return false;
     return true;
   });
 }

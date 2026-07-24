@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-background">
       <aside
         className={`hidden shrink-0 flex-col text-sidebar-foreground transition-all duration-300 md:flex ${
-          sidebarOpen ? "w-60" : "w-16 items-center"
+          sidebarOpen ? "w-56" : "w-16 items-center"
         }`}
         style={{ background: "var(--gradient-sidebar)" }}
       >
@@ -149,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile overlay sidebar */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-60 bg-background border-r flex flex-col" style={{ background: "var(--gradient-sidebar)" }}>
+          <div className="w-56 bg-background border-r flex flex-col" style={{ background: "var(--gradient-sidebar)" }}>
             <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-2">
               <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black h-9 w-9">

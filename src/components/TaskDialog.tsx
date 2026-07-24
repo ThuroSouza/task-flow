@@ -606,7 +606,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-2">
-              <Label className="text-xs">Coluna</Label>
+              <Label className="text-xs">Status</Label>
               <Select value={columnId || "none"} onValueChange={(v) => setColumnId(v === "none" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                 <SelectContent>
