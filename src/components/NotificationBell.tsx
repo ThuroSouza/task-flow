@@ -40,7 +40,7 @@ export function NotificationBell() {
       .order("created_at", { ascending: false })
       .limit(30);
     const next = (data ?? []) as Notification[];
-    if (next.some((n) => n.type === "assignment" || n.type === "subtask_assignment")) {
+    if (next.some((n) => n.type === "assignment" || n.type === "subtask_assignment" || n.type === "collaborator_assignment")) {
       refreshAssignedWork();
     }
     setItems(next);
@@ -57,7 +57,7 @@ export function NotificationBell() {
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload: any) => {
           const type = payload.new?.type ?? payload.old?.type;
-          if (type === "assignment" || type === "subtask_assignment") refreshAssignedWork();
+          if (type === "assignment" || type === "subtask_assignment" || type === "collaborator_assignment") refreshAssignedWork();
           void load();
         },
       )

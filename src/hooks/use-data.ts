@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -95,7 +95,6 @@ export interface Profile {
   id: string;
   full_name: string | null;
   email: string | null;
-  color: string | null;
   avatar_url: string | null;
   is_active?: boolean;
 }
@@ -233,7 +232,7 @@ export function useProfiles() {
   return useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("profiles") as any).select("id, full_name, color, avatar_url, is_active");
+      const { data, error } = await (supabase.from("profiles") as any).select("id, full_name, avatar_url, is_active");
       if (error) throw error;
       return (data ?? []) as Profile[];
     },
@@ -339,3 +338,5 @@ export function useTaskStatuses() {
     },
   });
 }
+
+

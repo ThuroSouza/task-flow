@@ -32,7 +32,7 @@ export const createUserAccess = createServerFn({ method: "POST" })
       user_metadata: { full_name: data.fullName, role: data.role },
     });
     if (error) throw new Error(error.message);
-    if (!created.user) throw new Error("NÃ£o foi possÃ­vel criar o usuÃ¡rio.");
+    if (!created.user) throw new Error("Não foi possível criar o usuário.");
 
     const { error: permissionsError } = await supabaseAdmin.from("user_permissions").upsert({
       user_id: created.user.id,
@@ -49,7 +49,7 @@ export const updateUserAccess = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const callerId = (context as any)?.userId ?? null;
     const supabaseAdmin = await requireAdmin(callerId);
-    if (data.userId === callerId && data.role !== "admin") throw new Error("VocÃª nÃ£o pode remover seu prÃ³prio acesso de administrador.");
+    if (data.userId === callerId && data.role !== "admin") throw new Error("Você não pode remover seu próprio acesso de administrador.");
     const { error: roleError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     if (roleError) throw new Error(roleError.message);
     const { error: insertRoleError } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: data.role });

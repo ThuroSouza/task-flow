@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { priorityLabels, priorityColors } from "@/lib/task-utils";
+import { RichTextView } from "@/components/RichTextEditor";
 
 interface AssignmentNotification {
   id: string;
@@ -26,7 +27,7 @@ interface TaskPreview {
   priority: string | null;
 }
 
-const ASSIGN_TYPES = new Set(["assignment", "subtask_assignment"]);
+const ASSIGN_TYPES = new Set(["assignment", "subtask_assignment", "collaborator_assignment"]);
 
 export function AssignmentPopup() {
   const { user } = useAuth();
@@ -78,7 +79,8 @@ export function AssignmentPopup() {
         .from("notifications")
         .select("id, task_id, title, body, created_at, type")
         .eq("user_id", user.id)
-        .in("type", ["assignment", "subtask_assignment"])
+        .eq("is_read", false)
+        .in("type", ["assignment", "subtask_assignment", "collaborator_assignment"])
         .order("created_at", { ascending: false })
         .limit(20);
       if (cancelled || !data) return;
@@ -174,7 +176,7 @@ export function AssignmentPopup() {
           <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
             <p className="font-medium">{preview.title}</p>
             {preview.description && (
-              <p className="line-clamp-3 text-xs text-muted-foreground">{preview.description}</p>
+              <RichTextView html={preview.description} className="line-clamp-3 text-xs text-muted-foreground" />
             )}
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {preview.due_date && (

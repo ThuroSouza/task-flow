@@ -696,10 +696,6 @@ export function TaskCard({
 
 
   const completedStatus = useMemo(() => statuses.find((s) => s.is_completed) ?? null, [statuses]);
-  const listColor = useMemo(
-    () => columns.find((column) => column.id === task.column_id)?.color || "#1e3a8a",
-    [columns, task.column_id],
-  );
 
   const completeTask = async () => {
     await update({
@@ -742,10 +738,6 @@ export function TaskCard({
         className={cn(
           "group relative flex h-[510px] w-full cursor-grab touch-none flex-col overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
         )}
-        style={{
-          borderLeftWidth: 4,
-          borderLeftColor: listColor,
-        }}
       >
         {/* Client color strip at top */}
         {client?.color ? (
@@ -930,7 +922,7 @@ export function TaskCard({
                 return (
                   <Avatar key={person.id} className="h-6 w-6 border-2 border-card text-[8px]" title={name}>
                     <AvatarImage src={person.avatar_url || undefined} alt={name} />
-                    <AvatarFallback style={{ backgroundColor: person.color || undefined }}>
+                    <AvatarFallback>
                       {name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -1797,12 +1789,12 @@ function SubtaskAssigneePopover({
                 value === p.id && "bg-primary/10 text-primary",
               )}
             >
-              <span
-                className="grid h-5 w-5 place-items-center rounded-full text-[10px] font-semibold text-white"
-                style={{ background: p.color || "#64748b" }}
-              >
-                {(p.full_name || p.email || "?").slice(0, 1).toUpperCase()}
-              </span>
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={p.avatar_url || undefined} alt={p.full_name || p.email || "Usuário"} />
+                <AvatarFallback className="text-[9px]">
+                  {(p.full_name || p.email || "?").slice(0, 1).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <span className="min-w-0 flex-1 truncate">{p.full_name || p.email}</span>
             </button>
           ))}
@@ -2029,3 +2021,4 @@ function DescriptionEditor({ initial, onSave }: { initial: string; onSave: (v: s
     </div>
   );
 }
+

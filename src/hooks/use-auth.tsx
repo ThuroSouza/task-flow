@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+﻿import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -7,7 +7,6 @@ interface Profile {
   full_name: string | null;
   email: string | null;
   avatar_url: string | null;
-  color: string | null;
   theme_preferences: Record<string, unknown> | null;
 }
 
@@ -38,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // The trigger in the migrations creates this row when a new user signs up.
     const { data: prof } = await supabase
       .from("profiles")
-      .select("id, full_name, avatar_url, color, theme_preferences")
+      .select("id, full_name, avatar_url, theme_preferences")
       .eq("id", uid)
       .maybeSingle();
     const { data: authUser } = await supabase.auth.getUser();
@@ -97,3 +96,5 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+
+

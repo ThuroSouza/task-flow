@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, ListChecks, Users, Building2, Settings, LogOut, Moon, Sun, PanelLeft, PanelRight, NotebookPen, BarChart3, Trash2, FileUp, UsersRound, CalendarCog, CircleDollarSign, ChevronDown } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -115,6 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={`border-t border-sidebar-border p-3 ${sidebarOpen ? "" : "flex flex-col items-center gap-2"}`}>
           <div className={`flex items-center gap-3 rounded-lg p-2 ${sidebarOpen ? "" : "flex-col"}`}>
             <Avatar className="h-8 w-8">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || user?.email || "Usuário"} />
               <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">{initials}</AvatarFallback>
             </Avatar>
             {sidebarOpen && (
@@ -187,6 +188,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="border-t border-sidebar-border p-3">
               <div className="flex items-center gap-3 rounded-lg p-2">
                 <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || user?.email || "Usuário"} />
                   <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
@@ -248,3 +250,5 @@ function PortalNavGroup({ expanded, active, onNavigate }: { expanded: boolean; a
     </Collapsible>
   );
 }
+
+
