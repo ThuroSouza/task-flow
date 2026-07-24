@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, ListChecks, Users, Building2, Settings, LogOut, Moon, Sun, PanelLeft, PanelRight, NotebookPen, BarChart3, Trash2, FileUp, UsersRound, CalendarCog, CircleDollarSign, ChevronDown } from "lucide-react";
+import { LayoutDashboard, ListChecks, Users, Building2, Settings, LogOut, Moon, Sun, PanelLeft, PanelRight, NotebookPen, BarChart3, Trash2, FileUp, PanelsTopLeft, CalendarCog, CircleDollarSign, ChevronDown } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AssignmentPopup } from "@/components/AssignmentPopup";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -31,7 +31,7 @@ const allNav: readonly NavItem[] = [
   { to: "/import-ata", label: "Importar Ata", icon: FileUp },
   { to: "/clients", label: "Clientes", icon: Building2 },
   { to: "/reports", label: "Relatórios", icon: BarChart3, adminOnly: true },
-  { to: "/portal", label: "Portal do Cliente", icon: UsersRound },
+  { to: "/portal", label: "Portal do Cliente", icon: PanelsTopLeft },
   { to: "/users", label: "Usuários", icon: Users, adminOnly: true },
   { to: "/trash", label: "Lixeira", icon: Trash2 },
   { to: "/settings", label: "Personalizar", icon: Settings },
@@ -87,9 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 space-y-1 px-3">
           {nav.map((n) => {
-            if (n.to === "/portal") {
-              return <PortalNavGroup key={n.to} expanded={sidebarOpen} active={pathname === "/portal"} />;
-            }
+            if (n.to === "/portal") return <PortalNavGroup key={n.to} expanded={sidebarOpen} active={pathname.startsWith("/portal/")} />;
             const Active = pathname === n.to || pathname.startsWith(n.to + "/");
             const Icon = n.icon;
             return (
@@ -163,9 +161,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <nav className="flex-1 space-y-1 px-3">
               {nav.map((n) => {
-                if (n.to === "/portal") {
-                  return <PortalNavGroup key={n.to} expanded active={pathname === "/portal"} onNavigate={() => setSidebarOpen(false)} />;
-                }
+                if (n.to === "/portal") return <PortalNavGroup key={n.to} expanded active={pathname.startsWith("/portal/")} onNavigate={() => setSidebarOpen(false)} />;
+            if (n.to === "/portal") return <PortalNavGroup key={n.to} expanded={sidebarOpen} active={pathname.startsWith("/portal/")} />;
                 const Active = pathname === n.to || pathname.startsWith(n.to + "/");
                 const Icon = n.icon;
                 return (
@@ -220,35 +217,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function PortalNavGroup({ expanded, active, onNavigate }: { expanded: boolean; active: boolean; onNavigate?: () => void }) {
-  if (!expanded) {
-    return (
-      <Link to="/portal" title="Portal do Cliente" className={`flex justify-center rounded-lg px-2 py-2 text-sm transition ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}>
-        <UsersRound className="h-4 w-4" />
-      </Link>
-    );
-  }
-
-  return (
-    <Collapsible defaultOpen={active} className="space-y-1">
-      <div className={`flex items-center rounded-lg transition ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}>
-        <Link to="/portal" onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm">
-          <UsersRound className="h-4 w-4 shrink-0" />
-          <span className="truncate">Portal do Cliente</span>
-        </Link>
-        <CollapsibleTrigger className="mr-1 rounded p-2 hover:bg-sidebar-accent" aria-label="Expandir Portal do Cliente">
-          <ChevronDown className="h-4 w-4" />
-        </CollapsibleTrigger>
-      </div>
-      <CollapsibleContent className="space-y-1 pl-4">
-        <a href="/portal#entregas" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-          <CalendarCog className="h-4 w-4" />Calendário de Entregas
-        </a>
-        <a href="/portal#financeiro" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-          <CircleDollarSign className="h-4 w-4" />Financeiro
-        </a>
-      </CollapsibleContent>
-    </Collapsible>
-  );
+  if (!expanded) return <div title="Portal do Cliente" className={`flex justify-center rounded-lg px-2 py-2 ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70"}`}><PanelsTopLeft className="h-4 w-4" /></div>;
+  return <Collapsible defaultOpen={active} className="space-y-1"><CollapsibleTrigger className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}><PanelsTopLeft className="h-4 w-4" /><span className="flex-1 text-left">Portal do Cliente</span><ChevronDown className="h-4 w-4" /></CollapsibleTrigger><CollapsibleContent className="space-y-1 pl-4"><Link to="/portal/entregas" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"><CalendarCog className="h-4 w-4" />Calendário de Entregas</Link><Link to="/portal/financeiro" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"><CircleDollarSign className="h-4 w-4" />Financeiro</Link></CollapsibleContent></Collapsible>;
 }
-
-

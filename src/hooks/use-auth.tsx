@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +15,9 @@ interface AuthCtx {
   user: User | null;
   profile: Profile | null;
   isAdmin: boolean;
+  isCollaborator: boolean;
+  isClient: boolean;
+  clientId: string | null;
   permissions: string[];
   hasPermission: (permission: string) => boolean;
   loading: boolean;
@@ -29,6 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCollaborator, setIsCollaborator] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Admin-only pages are controlled by public.user_roles, not by hardcoded emails.
     const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
     const admin = !!roles?.some((r: { role: string }) => r.role === "admin");
+    const collaborator = !!roles?.some((r: { role: string }) => r.role === "collaborator");
+    const client = !!roles?.some((r: { role: string }) => r.role === "client");
     setIsAdmin(admin);
+    setIsCollaborator(collaborator);
+    setIsClient(client);
+    const { data: link } = await (supabase.from("client_user_links" as any) as any).select("client_id").eq("user_id", uid).maybeSingle();
+    setClientId(link?.client_id ?? null);
     const { data: access } = await (supabase.from("user_permissions") as any).select("permissions").eq("user_id", uid).maybeSingle();
     setPermissions(admin ? ["dashboard", "tasks", "notes", "import_ata", "clients", "reports", "portal", "calendar", "users", "trash", "settings"] : (access?.permissions ?? []));
   };
@@ -61,6 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setIsAdmin(false);
+        setIsCollaborator(false);
+        setIsClient(false);
+        setClientId(null);
         setPermissions([]);
       }
     });
@@ -85,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasPermission = (permission: string) => isAdmin || permissions.includes(permission);
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, isAdmin, permissions, hasPermission, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, isAdmin, isCollaborator, isClient, clientId, permissions, hasPermission, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

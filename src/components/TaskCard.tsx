@@ -733,7 +733,7 @@ export function TaskCard({
 
   if (minimal) {
     return (
-      <div {...dragHandleProps} className="group flex min-h-[108px] w-full cursor-grab touch-none flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing" title={task.title || "Sem título"}>
+      <div {...dragHandleProps} className="group flex min-h-[132px] w-full cursor-grab touch-none flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing" title={task.title || "Sem título"}>
         <div className="flex min-h-7 items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style={client?.color ? { background: client.color, color: clientText } : undefined}>
           <Users className="h-3 w-3 shrink-0" />
           <span className="truncate">{client?.name || "Sem cliente"}</span>
@@ -741,14 +741,19 @@ export function TaskCard({
         <button type="button" onPointerDown={stop} onClick={(event) => { stop(event); onEdit?.(); }} className="min-h-0 flex-1 px-2 py-1.5 text-left text-sm font-medium leading-snug [overflow-wrap:anywhere] hover:text-primary">
           {task.title || <span className="text-muted-foreground">Sem título</span>}
         </button>
+        <div className="flex items-center gap-1 border-t px-1.5 py-1">
+          <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0 text-success" onPointerDown={stop} onClick={(event) => { stop(event); void completeTask(); }} title="Concluir tarefa" aria-label="Concluir tarefa"><CheckCircle2 className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onPointerDown={stop} onClick={(event) => { stop(event); onDuplicate?.(); }} title="Duplicar tarefa" aria-label="Duplicar tarefa"><Copy className="h-3.5 w-3.5" /></Button>
+          {taskPeople.length > 0 ? <div className="ml-0.5 flex min-w-0 flex-1 -space-x-1.5" title="Responsável e colaboradores">{taskPeople.slice(0, 3).map((person) => { const name = person.full_name || person.email || "Usuário"; return <Avatar key={person.id} className="h-6 w-6 border-2 border-card text-[8px]" title={name}><AvatarImage src={person.avatar_url || undefined} alt={name} /><AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>; })}{taskPeople.length > 3 ? <span className="ml-1 self-center text-[10px] text-muted-foreground">+{taskPeople.length - 3}</span> : null}</div> : <span className="flex-1" />}
+          <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onPointerDown={stop} onClick={(event) => { stop(event); onEdit?.(); }} title="Editar tarefa" aria-label="Editar tarefa"><MoreHorizontal className="h-3.5 w-3.5" /></Button>
+        </div>
         <div className={cn("flex items-center gap-1 border-t px-2 py-1 text-[11px]", dueChipClass)}>
           <CalendarIcon className="h-3 w-3 shrink-0" />
           <span className="truncate">{dueLabel ? `Prazo: ${dueLabel}` : "Sem prazo"}</span>
         </div>
       </div>
     );
-  }
-  return (
+  }  return (
     <>
       <div
         {...dragHandleProps}
