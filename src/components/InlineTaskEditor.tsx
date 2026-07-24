@@ -40,9 +40,10 @@ interface Props {
 function toLocalInput(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
+
+const deadlineToIso = (date: string) => date ? new Date(`${date}T12:00:00`).toISOString() : null;
 
 export function InlineTaskEditor({
   task,
@@ -137,7 +138,7 @@ export function InlineTaskEditor({
       description: merged.description || null,
       priority: merged.priority,
       status: merged.status,
-      due_date: merged.due_date ? new Date(merged.due_date).toISOString() : null,
+      due_date: deadlineToIso(merged.due_date),
       client_id: merged.client_id === "none" ? null : merged.client_id,
       assignee_id: merged.assignee_id === "none" ? null : merged.assignee_id,
       column_id: merged.column_id === "none" ? null : merged.column_id,
@@ -463,7 +464,7 @@ export function InlineTaskEditor({
             <div>
               <Label className="text-[10px] text-muted-foreground">Prazo</Label>
               <Input
-                type="datetime-local"
+                type="date"
                 value={form.due_date}
                 onChange={(event) => setForm({ ...form, due_date: event.target.value })}
                 className={selectTriggerClass}

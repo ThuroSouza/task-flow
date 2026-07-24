@@ -454,9 +454,8 @@ export function TaskCard({
   };
 
   const dueDate = task.due_date ? new Date(task.due_date) : null;
-  const hasTime = !!dueDate && (dueDate.getHours() !== 0 || dueDate.getMinutes() !== 0);
   const dueLabel = dueDate
-    ? format(dueDate, hasTime ? "dd MMM 'às' HH:mm" : "dd MMM", { locale: ptBR })
+    ? format(dueDate, "dd MMM", { locale: ptBR })
     : null;
 
   const dueMeta = (() => {
@@ -482,7 +481,7 @@ export function TaskCard({
         state: "today" as const,
         label: "Vence hoje",
         days: 0,
-        subtext: hasTime ? format(dueDate, "HH:mm") : dueLabel,
+        subtext: dueLabel,
       };
     }
     if (diffDays === 1) {
@@ -490,7 +489,7 @@ export function TaskCard({
         state: "tomorrow" as const,
         label: "Vence amanhã",
         days: 1,
-        subtext: hasTime ? format(dueDate, "HH:mm") : dueLabel,
+        subtext: dueLabel,
       };
     }
     if (diffDays <= 7) {
@@ -498,7 +497,7 @@ export function TaskCard({
         state: "soon" as const,
         label: `Vence em ${diffDays} dias`,
         days: diffDays,
-        subtext: hasTime ? format(dueDate, "HH:mm") : dueLabel,
+        subtext: dueLabel,
       };
     }
     return { state: "future" as const, label: "Prazo", days: diffDays, subtext: dueLabel };
@@ -517,8 +516,7 @@ export function TaskCard({
   const computeSubtaskDue = (iso: string | null, done: boolean) => {
     if (!iso) return { label: "Sem prazo", cls: "bg-muted/60 text-muted-foreground border border-dashed border-muted-foreground/30", state: "none" as const };
     const d = new Date(iso);
-    const hasT = d.getHours() !== 0 || d.getMinutes() !== 0;
-    const dateLabel = format(d, hasT ? "dd MMM 'às' HH:mm" : "dd MMM", { locale: ptBR });
+    const dateLabel = format(d, "dd MMM", { locale: ptBR });
     if (done) return { label: dateLabel, cls: "bg-muted text-muted-foreground line-through", state: "done" as const };
     const now = new Date();
     const s0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -736,7 +734,7 @@ export function TaskCard({
       <div
         {...dragHandleProps}
         className={cn(
-          "group relative flex h-[510px] w-full cursor-grab touch-none flex-col overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
+          "group relative flex min-h-[460px] w-full cursor-grab touch-none flex-col overflow-visible rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing",
         )}
       >
         {/* Client color strip at top */}
@@ -753,7 +751,7 @@ export function TaskCard({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+        <div className="min-h-0 flex-1 overflow-visible p-2">
           <div className="flex flex-col gap-1.5">
         {/* Tags — multiple, click chip to manage */}
         {isVisible("tags") ? (
@@ -1150,7 +1148,7 @@ export function TaskCard({
                           title={format(new Date(s.completed_at), "PPPp", { locale: ptBR })}
                         >
                           <CheckCircle2 className="h-2.5 w-2.5" />
-                          {format(new Date(s.completed_at), "dd/MM HH:mm", { locale: ptBR })}
+                          {format(new Date(s.completed_at), "dd/MM/yyyy", { locale: ptBR })}
                         </span>
                       ) : null}
                       <SubtaskDuePopover
@@ -1412,7 +1410,7 @@ export function TaskCard({
               value={
                 <span
                   className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
-                  title={`Criada em ${format(new Date(task.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}`}
+                  title={`Criada em ${format(new Date(task.created_at), "dd/MM/yyyy", { locale: ptBR })}`}
                 >
                   <CalendarIcon className="h-2.5 w-2.5" />
                   Criada · {format(new Date(task.created_at), "dd MMM", { locale: ptBR })}
@@ -1558,8 +1556,8 @@ export function TaskCard({
           </DialogHeader>
           <div className="space-y-2 text-xs">
             <div className="rounded border bg-muted/50 p-2">
-              <p><strong>Prazo anterior:</strong> {task.due_date ? format(new Date(task.due_date), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—"}</p>
-              <p><strong>Novo prazo:</strong> {dueChange.pending ? format(new Date(dueChange.pending), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—"}</p>
+              <p><strong>Prazo anterior:</strong> {task.due_date ? format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}</p>
+              <p><strong>Novo prazo:</strong> {dueChange.pending ? format(new Date(dueChange.pending), "dd/MM/yyyy", { locale: ptBR }) : "—"}</p>
             </div>
             <Textarea
               autoFocus
@@ -1587,8 +1585,8 @@ export function TaskCard({
           <div className="space-y-2 text-xs">
             <div className="rounded border bg-muted/50 p-2">
               <p><strong>Subtarefa:</strong> <span dangerouslySetInnerHTML={{ __html: subDueReason.subtask?.title ?? "" }} /></p>
-              <p><strong>Prazo anterior:</strong> {subDueReason.prev ? format(new Date(subDueReason.prev), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "sem prazo"}</p>
-              <p><strong>Novo prazo:</strong> {subDueReason.next ? format(new Date(subDueReason.next), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "sem prazo"}</p>
+              <p><strong>Prazo anterior:</strong> {subDueReason.prev ? format(new Date(subDueReason.prev), "dd/MM/yyyy", { locale: ptBR }) : "sem prazo"}</p>
+              <p><strong>Novo prazo:</strong> {subDueReason.next ? format(new Date(subDueReason.next), "dd/MM/yyyy", { locale: ptBR }) : "sem prazo"}</p>
             </div>
             <Textarea
               autoFocus
@@ -1632,16 +1630,16 @@ export function TaskCard({
               {dueHistory.map((h) => (
                 <li key={h.id} className="rounded border p-2 text-xs">
                   <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>{format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                    <span>{format(new Date(h.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                     {h.user_id ? <span>por {profiles.find((p) => p.id === h.user_id)?.full_name ?? "usuário"}</span> : null}
                   </div>
                   <p>
                     <span className="text-muted-foreground">De:</span>{" "}
-                    <strong>{h.old_due_date ? format(new Date(h.old_due_date), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "sem prazo"}</strong>
+                    <strong>{h.old_due_date ? format(new Date(h.old_due_date), "dd/MM/yyyy", { locale: ptBR }) : "sem prazo"}</strong>
                   </p>
                   <p>
                     <span className="text-muted-foreground">Para:</span>{" "}
-                    <strong>{h.new_due_date ? format(new Date(h.new_due_date), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "sem prazo"}</strong>
+                    <strong>{h.new_due_date ? format(new Date(h.new_due_date), "dd/MM/yyyy", { locale: ptBR }) : "sem prazo"}</strong>
                   </p>
                   <p className="mt-1">
                     <span className="text-muted-foreground">Motivo: </span>
@@ -1817,28 +1815,15 @@ function SubtaskDuePopover({
 }) {
   const [open, setOpen] = useState(false);
   const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    if (dueIso) {
-      const d = new Date(dueIso);
-      setDateStr(format(d, "yyyy-MM-dd"));
-      setTimeStr(d.getHours() !== 0 || d.getMinutes() !== 0 ? format(d, "HH:mm") : "");
-    } else {
-      setDateStr("");
-      setTimeStr("");
-    }
+    setDateStr(dueIso ? format(new Date(dueIso), "yyyy-MM-dd") : "");
   }, [open, dueIso]);
 
   const save = () => {
-    if (!dateStr) {
-      onClear();
-      setOpen(false);
-      return;
-    }
-    const t = timeStr && /^\d{2}:\d{2}$/.test(timeStr) ? timeStr : "00:00";
-    onApply(new Date(`${dateStr}T${t}`).toISOString());
+    if (!dateStr) { onClear(); setOpen(false); return; }
+    onApply(new Date(`${dateStr}T12:00:00`).toISOString());
     setOpen(false);
   };
 
@@ -1868,33 +1853,11 @@ function SubtaskDuePopover({
             onChange={(e) => setDateStr(e.target.value)}
             className="h-8 flex-1 text-xs"
           />
-          <Input
-            type="time"
-            value={timeStr}
-            onChange={(e) => setTimeStr(e.target.value)}
-            disabled={!dateStr}
-            className="h-8 w-24 text-xs"
-            placeholder="opcional"
-          />
         </div>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Hora é opcional — deixe em branco para prazo do dia todo.
-        </p>
         <div className="mt-2 flex gap-1">
           <Button type="button" size="sm" onClick={save} className="h-7 flex-1 text-xs">
             Salvar
           </Button>
-          {timeStr ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setTimeStr("")}
-              className="h-7 text-xs text-muted-foreground"
-            >
-              Sem hora
-            </Button>
-          ) : null}
           {dueIso ? (
             <Button
               type="button"
@@ -1916,54 +1879,16 @@ function SubtaskDuePopover({
 }
 
 function DueDateEditor({ task, onChange }: { task: Task; onChange: (v: string | null) => void }) {
-  const initial = task.due_date ? new Date(task.due_date) : null;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const toLocalDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const toLocalTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-  const [dateStr, setDateStr] = useState(initial ? toLocalDate(initial) : "");
-  const [timeStr, setTimeStr] = useState(
-    initial && (initial.getHours() !== 0 || initial.getMinutes() !== 0) ? toLocalTime(initial) : "",
-  );
-
-  const commit = (d: string, t: string) => {
-    if (!d) { onChange(null); return; }
-    const [y, m, day] = d.split("-").map(Number);
-    const [hh, mm] = t ? t.split(":").map(Number) : [0, 0];
-    const date = new Date(y, m - 1, day, hh, mm, 0, 0);
-    onChange(date.toISOString());
-  };
+  const [dateStr, setDateStr] = useState(task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "");
+  const commit = () => onChange(dateStr ? new Date(`${dateStr}T12:00:00`).toISOString() : null);
 
   return (
     <PopoverField label="Prazo">
       <div className="space-y-2">
-        <div>
-          <p className="mb-1 text-[10px] text-muted-foreground">Data</p>
-          <Input
-            type="date"
-            value={dateStr}
-            onChange={(e) => setDateStr(e.target.value)}
-            className="h-8 text-xs"
-          />
-        </div>
-        <div>
-          <p className="mb-1 text-[10px] text-muted-foreground">Hora (opcional)</p>
-          <Input
-            type="time"
-            value={timeStr}
-            onChange={(e) => setTimeStr(e.target.value)}
-            disabled={!dateStr}
-            className="h-8 text-xs"
-          />
-        </div>
+        <Input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className="h-8 text-xs" />
         <div className="flex items-center justify-between gap-2">
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setDateStr(""); setTimeStr(""); onChange(null); }}>Limpar</Button>
-          <div className="flex gap-1">
-            {timeStr && (
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setTimeStr("")}>Sem hora</Button>
-            )}
-            <Button size="sm" className="h-7 text-xs" onClick={() => commit(dateStr, timeStr)}>Salvar</Button>
-          </div>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setDateStr(""); onChange(null); }}>Limpar</Button>
+          <Button size="sm" className="h-7 text-xs" onClick={commit}>Salvar</Button>
         </div>
       </div>
     </PopoverField>
@@ -1971,31 +1896,13 @@ function DueDateEditor({ task, onChange }: { task: Task; onChange: (v: string | 
 }
 
 function CreatedAtEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const initial = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const toLocal = (d: Date) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  const [v, setV] = useState(toLocal(initial));
+  const [v, setV] = useState(format(new Date(value), "yyyy-MM-dd"));
   return (
     <PopoverField label="Data de criação">
       <div className="space-y-2">
-        <Input
-          type="datetime-local"
-          value={v}
-          onChange={(e) => setV(e.target.value)}
-          className="h-8 text-xs"
-        />
+        <Input type="date" value={v} onChange={(e) => setV(e.target.value)} className="h-8 text-xs" />
         <div className="flex justify-end">
-          <Button
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => {
-              if (!v) return;
-              const d = new Date(v);
-              if (isNaN(d.getTime())) return;
-              onChange(d.toISOString());
-            }}
-          >
+          <Button size="sm" className="h-7 text-xs" onClick={() => { if (v) onChange(new Date(`${v}T12:00:00`).toISOString()); }}>
             Salvar
           </Button>
         </div>

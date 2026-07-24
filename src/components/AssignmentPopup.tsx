@@ -182,7 +182,7 @@ export function AssignmentPopup() {
               {preview.due_date && (
                 <span className="inline-flex items-center gap-1 rounded bg-background px-2 py-1 font-medium">
                   <Calendar className="h-3 w-3" />
-                  Prazo: {format(new Date(preview.due_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  Prazo: {format(new Date(preview.due_date), "dd/MM/yyyy", { locale: ptBR })}
                 </span>
               )}
               {preview.priority && (

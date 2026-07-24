@@ -199,7 +199,7 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
           className={`rounded-lg border-2 border-solid p-2 transition ${
             isH
               ? "flex flex-col gap-2"
-              : "flex flex-wrap items-start gap-2"
+              : "flex flex-nowrap items-start gap-2 overflow-x-auto pb-2"
           } ${isOver ? "border-emerald-500 bg-emerald-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}
           style={{ minHeight: isH ? 200 : 120 }}
         >
@@ -306,7 +306,7 @@ function SortableColumn({
           className={`rounded-lg border-2 border-solid border-l-4 p-2 transition ${
             isH
               ? "flex flex-col gap-3"
-              : "flex flex-wrap items-start gap-4"
+              : "flex flex-nowrap items-start gap-4 overflow-x-auto pb-2"
           } ${isOver ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}
           style={{
             minHeight: isH ? 200 : 120,
@@ -1006,7 +1006,7 @@ function KanbanPage() {
       const client = clients.find((c) => c.id === t.client_id);
       const assignee = profiles.find((p) => p.id === t.assignee_id);
       const taskTags = tagsByTask.get(t.id) ?? [];
-      const due = t.due_date ? format(new Date(t.due_date), "dd/MM/yyyy HH:mm") : "";
+      const due = t.due_date ? format(new Date(t.due_date), "dd/MM/yyyy") : "";
       return `
         <div class="task" style="border-left:4px solid ${t.color || "#1e3a8a"}">
           <div class="task-title">${esc(t.title)}</div>
@@ -1132,8 +1132,8 @@ function KanbanPage() {
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col md:h-[calc(100dvh-49px)]">
-      <header className="shrink-0 border-b bg-background p-4">
-        <div className="flex items-center justify-end gap-4">
+      <header className="shrink-0 border-b bg-background px-3 py-2">
+        <div className="flex items-center justify-end gap-2">
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void exportPdf()} disabled={exportingPdf}>
               <FileDown className="mr-2 h-4 w-4" />
@@ -1164,13 +1164,13 @@ function KanbanPage() {
             </Button>
           </div>
         </div>
-        <div className="mt-4 space-y-2">
+        <div className="mt-2 space-y-1">
           <TaskFilters filters={filters} onChange={setFilters}>
             <div className="flex items-center justify-end gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1.5"
+                className="h-7 gap-1"
                 onClick={() =>
                   updatePrefs.mutate({
                     kanban_orientation: orientation === "horizontal" ? "vertical" : "horizontal",
@@ -1183,7 +1183,7 @@ function KanbanPage() {
               </Button>
               <CardFieldsPopover />
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className="mr-3 inline-flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">Concluídas no período</span>
                 <Input
                   type="date"
@@ -1191,7 +1191,7 @@ function KanbanPage() {
                   onChange={(e) =>
                     setCompletedRange((range) => ({ ...range, start: e.target.value }))
                   }
-                  className="h-8 w-40"
+                  className="h-7 w-36"
                 />
                 <span>até</span>
                 <Input
@@ -1200,26 +1200,26 @@ function KanbanPage() {
                   onChange={(e) =>
                     setCompletedRange((range) => ({ ...range, end: e.target.value }))
                   }
-                  className="h-8 w-40"
+                  className="h-7 w-36"
                 />
                 {completedRange.start || completedRange.end ? (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8"
+                    className="h-7"
                     onClick={() => setCompletedRange({ start: "", end: "" })}
                   >
                     Limpar período
                   </Button>
                 ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex flex-wrap items-center gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">Ordenar:</span>
                 <Select
                   value={sort.field}
                   onValueChange={(v) => setSort((s) => ({ ...s, field: v as SortField }))}
                 >
-                  <SelectTrigger className="h-8 w-44">
+                  <SelectTrigger className="h-7 w-44">
                     <SelectValue placeholder="1º critério" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1233,7 +1233,7 @@ function KanbanPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8"
+                  className="h-7"
                   onClick={() =>
                     setSort((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
                   }
@@ -1250,7 +1250,7 @@ function KanbanPage() {
                   value={sort2.field}
                   onValueChange={(v) => setSort2((s) => ({ ...s, field: v as SortField | "none" }))}
                 >
-                  <SelectTrigger className="h-8 w-44">
+                  <SelectTrigger className="h-7 w-44">
                     <SelectValue placeholder="2º critério" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1265,7 +1265,7 @@ function KanbanPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8"
+                    className="h-7"
                     onClick={() =>
                       setSort2((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
                     }

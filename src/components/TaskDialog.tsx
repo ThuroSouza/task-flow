@@ -32,6 +32,8 @@ interface Subtask { id: string; title: string; done: boolean; position: number; 
 interface SubtaskAttachment { id: string; subtask_id: string; file_name: string; storage_path: string; mime_type: string | null; size_bytes: number | null; }
 interface SubtaskDueChange { id: string; subtask_id: string; old_due_date: string | null; new_due_date: string | null; reason: string | null; created_at: string; }
 interface Comment { id: string; title: string | null; body: string; author_id: string; created_at: string; }
+
+const deadlineToIso = (date: string) => date ? new Date(`${date}T12:00:00`).toISOString() : null;
 interface Attachment { id: string; file_name: string; storage_path: string; mime_type: string | null; size_bytes: number | null; }
 const LINK_MIME = "text/uri-list";
 
@@ -83,7 +85,6 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
   const [recurrenceOffsets, setRecurrenceOffsets] = useState<Record<number, number>>({
     0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0,
   });
-  const [recurrenceTime, setRecurrenceTime] = useState<string>("18:00");
 
   useEffect(() => {
     if (!open) return;
@@ -96,7 +97,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
       setClientId(task.client_id ?? "");
       setAssigneeId(task.assignee_id ?? "");
       void loadCollaborators(task.id);
-      setDueDate(task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd'T'HH:mm") : "");
+      setDueDate(task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "");
       currentTaskIdRef.current = task.id;
       setCurrentTaskId(task.id);
       setNewSubtask("");
@@ -175,7 +176,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
     column_id: columnId || null,
     client_id: clientId || null,
     assignee_id: assigneeId || null,
-    due_date: dueDate ? new Date(dueDate).toISOString() : null,
+    due_date: deadlineToIso(dueDate),
     completed_at: status === "done" ? new Date().toISOString() : null,
   });
 
@@ -248,7 +249,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
       task_id: taskId,
       title,
       position,
-      due_date: due ? new Date(due).toISOString() : null,
+      due_date: deadlineToIso(due),
       assignee_id: assignee || null,
     } as any).select("id, title, done, position, due_date, assignee_id, notes").single();
 
@@ -293,8 +294,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
         }
         if (recurrenceDays.length === 0) { toast.error("Selecione ao menos um dia da semana"); setSaving(false); return; }
         if (!recurrenceEnd) { toast.error("Defina a data final da recorrência"); setSaving(false); return; }
-        const [hh, mm] = recurrenceTime.split(":").map(Number);
-        const start = new Date(); start.setHours(0, 0, 0, 0);
+                const start = new Date(); start.setHours(0, 0, 0, 0);
         const end = new Date(recurrenceEnd + "T23:59:59");
         if (end < start) { toast.error("A data final deve ser futura"); setSaving(false); return; }
         const rows: ReturnType<typeof buildPayload>[] = [];
@@ -303,7 +303,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
           if (!recurrenceDays.includes(wd)) continue;
           const due = new Date(d);
           due.setDate(due.getDate() + (recurrenceOffsets[wd] ?? 0));
-          due.setHours(hh || 18, mm || 0, 0, 0);
+          due.setHours(12, 0, 0, 0);
           rows.push({ ...payload, due_date: due.toISOString() });
         }
         if (rows.length === 0) { toast.error("Nenhuma ocorrência no intervalo"); setSaving(false); return; }
@@ -378,7 +378,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
     setSubtasks(subtasks.filter(s => s.id !== id));
   };
   const updateSubtaskDue = async (st: Subtask, isoOrEmpty: string, reason?: string) => {
-    const next = isoOrEmpty ? new Date(isoOrEmpty).toISOString() : null;
+    const next = deadlineToIso(isoOrEmpty);
     const prev = st.due_date;
     if (next === prev) return;
     const { error } = await supabase.from("subtasks").update({ due_date: next }).eq("id", st.id);
@@ -553,7 +553,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
               </Label>
               <div className="flex items-center gap-1.5">
                 <Input
-                  type="datetime-local"
+                  type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="flex-1"
@@ -678,10 +678,6 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                       <Label className="text-xs">Repetir até</Label>
                       <Input type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Horário do prazo</Label>
-                      <Input type="time" value={recurrenceTime} onChange={(e) => setRecurrenceTime(e.target.value)} />
-                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs">Prazo personalizado por dia (dias após a ocorrência)</Label>
@@ -721,7 +717,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
               </TabsList>
               <TabsContent value="subtasks" className="space-y-2">
                 {subtasks.map(s => {
-                  const dueStr = s.due_date ? format(new Date(s.due_date), "yyyy-MM-dd'T'HH:mm") : "";
+                  const dueStr = s.due_date ? format(new Date(s.due_date), "yyyy-MM-dd") : "";
                   const historyOpen = subDueOpen[s.id];
                   const history = subDueChanges[s.id] ?? [];
                   const expanded = subExpanded[s.id];
@@ -747,7 +743,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                       <div className="flex flex-wrap items-center gap-2 pl-6">
                         <Label className="text-[10px] text-muted-foreground">Prazo</Label>
                         <Input
-                          type="datetime-local"
+                          type="date"
                           value={dueStr}
                           onChange={(e) => updateSubtaskDue(s, e.target.value)}
                           className="h-7 w-52 text-xs"
@@ -775,11 +771,11 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                             <p className="text-[11px] text-muted-foreground">Sem alterações registradas.</p>
                           ) : history.map(h => (
                             <div key={h.id} className="text-[11px] text-muted-foreground">
-                              <span className="font-medium text-foreground">{h.old_due_date ? format(new Date(h.old_due_date), "dd/MM HH:mm") : "sem prazo"}</span>
+                              <span className="font-medium text-foreground">{h.old_due_date ? format(new Date(h.old_due_date), "dd/MM/yyyy") : "sem prazo"}</span>
                               {" → "}
-                              <span className="font-medium text-foreground">{h.new_due_date ? format(new Date(h.new_due_date), "dd/MM HH:mm") : "sem prazo"}</span>
+                              <span className="font-medium text-foreground">{h.new_due_date ? format(new Date(h.new_due_date), "dd/MM/yyyy") : "sem prazo"}</span>
                               {h.reason ? <> — {h.reason}</> : null}
-                              <span className="ml-2 opacity-60">{format(new Date(h.created_at), "dd/MM HH:mm")}</span>
+                              <span className="ml-2 opacity-60">{format(new Date(h.created_at), "dd/MM/yyyy")}</span>
                             </div>
                           ))}
                         </div>
@@ -828,7 +824,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                 })}
                 <div className="flex flex-wrap gap-2">
                   <Input placeholder="Nova subtarefa" value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubtask()} className="min-w-[180px] flex-1" />
-                  <Input type="datetime-local" value={newSubtaskDue} onChange={(e) => setNewSubtaskDue(e.target.value)} className="w-52" title="Prazo (opcional)" />
+                  <Input type="date" value={newSubtaskDue} onChange={(e) => setNewSubtaskDue(e.target.value)} className="w-52" title="Prazo (opcional)" />
                   <Select value={newSubtaskAssignee || "none"} onValueChange={(v) => setNewSubtaskAssignee(v === "none" ? "" : v)}>
                     <SelectTrigger className="w-44" title="Responsável (opcional)"><SelectValue placeholder="Responsável" /></SelectTrigger>
                     <SelectContent>
@@ -867,7 +863,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                             </button>
                           </CollapsibleTrigger>
                           <span className="shrink-0 text-[10px] text-muted-foreground">
-                            {format(new Date(c.created_at), "dd/MM HH:mm")}
+                            {format(new Date(c.created_at), "dd/MM/yyyy")}
                           </span>
                           <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => deleteComment(c.id)}>
                             <X className="h-3.5 w-3.5" />

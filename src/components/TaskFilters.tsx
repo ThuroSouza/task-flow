@@ -102,7 +102,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-card p-1.5">
           {/* Scope segmented */}
           <div>
             <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
@@ -119,7 +119,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
             value={dateVal}
             onValueChange={(v) => onChange({ ...filters, date: v as DateFilter })}
           >
-            <SelectTrigger className="h-8 w-36">
+            <SelectTrigger className="h-7 w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -135,7 +135,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
           {/* Clients multi */}
           <Popover open={clientsOpen} onOpenChange={setClientsOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 justify-between gap-2 font-normal">
+              <Button variant="outline" size="sm" className="h-7 justify-between gap-1.5 font-normal">
                 <span className="truncate max-w-40">{clientsLabel}</span>
                 {selectedClients.length > 0 && (
                   <Badge variant="secondary" className="h-5 px-1.5">
@@ -208,7 +208,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
             value={filters.assignee ?? "all"}
             onValueChange={(v) => onChange({ ...filters, assignee: v === "all" ? undefined : v })}
           >
-            <SelectTrigger className="h-8 w-40">
+            <SelectTrigger className="h-7 w-48">
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
             <SelectContent>
@@ -226,7 +226,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
             value={filters.priority ?? "all"}
             onValueChange={(v) => onChange({ ...filters, priority: v === "all" ? undefined : v })}
           >
-            <SelectTrigger className="h-8 w-32">
+            <SelectTrigger className="h-7 w-40">
               <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
             <SelectContent>
@@ -238,7 +238,7 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
             </SelectContent>
           </Select>
       {activeCount > 0 && (
-        <Button size="sm" variant="ghost" className="h-8 ml-auto text-muted-foreground" onClick={clearAll}>
+        <Button size="sm" variant="ghost" className="h-7 ml-auto text-muted-foreground" onClick={clearAll}>
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
           Limpar ({activeCount})
         </Button>
@@ -249,8 +249,8 @@ export function TaskFilters({ filters, onChange, children }: { filters: Filters;
           Nenhum filtro
         </div>
       )}
-      </div>
       {children}
+      </div>
     </>
   );
 }
@@ -270,7 +270,7 @@ function ScopeBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${
+      className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium transition ${
         active
           ? "bg-background text-foreground shadow-sm"
           : "text-muted-foreground hover:text-foreground"
