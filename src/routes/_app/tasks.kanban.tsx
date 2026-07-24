@@ -37,6 +37,8 @@ import {
   FileDown,
   Rows,
   Columns,
+  PanelTop,
+  PanelsTopLeft,
 } from "lucide-react";
 import {
   Select,
@@ -103,6 +105,7 @@ function SortableTaskCard({
   statuses,
   collaborators,
   orientation,
+  minimal,
 }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -117,7 +120,7 @@ function SortableTaskCard({
   } as CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style} className="w-72 max-w-full min-w-0 shrink-0">
+    <div ref={setNodeRef} style={style} className={minimal ? "w-[clamp(15rem,18vw,19rem)] max-w-full min-w-0 shrink-0" : "w-72 max-w-full min-w-0 shrink-0"}>
       <TaskCard
         task={task}
         columns={columns}
@@ -128,6 +131,7 @@ function SortableTaskCard({
         collaborators={collaborators}
         onEdit={onEdit}
         onDuplicate={onDuplicate}
+        minimal={minimal}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -170,18 +174,18 @@ function compareByField(
   }
 }
 
-function CompletedColumn({ taskIds, count, children, orientation }: any) {
+function CompletedColumn({ taskIds, count, children, orientation, minimal }: any) {
   const { setNodeRef, isOver } = useDroppable({
     id: `drop:${COMPLETED_COL_ID}`,
     data: { type: "column-drop", colId: COMPLETED_COL_ID },
   });
   const isH = orientation === "horizontal";
   return (
-    <div className={isH ? "flex w-72 shrink-0 flex-col" : "flex w-full flex-col"}>
+    <div className={isH ? (minimal ? "flex w-[clamp(15rem,18vw,19rem)] shrink-0 flex-col" : "flex w-72 shrink-0 flex-col") : "flex w-full flex-col"}>
       <div className="mb-2 flex items-center gap-1.5 px-1">
-        <span className="h-3 w-3 rounded-full bg-emerald-500" />
+        <span className="h-3 w-3 rounded-full bg-emerald-500 dark:bg-emerald-400 dark:ring-2 dark:ring-emerald-200/40 dark:shadow-[0_0_12px_rgba(74,222,128,0.7)]" />
         <h3 className="font-semibold">Concluídas</h3>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-black">
+        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-900 dark:bg-emerald-400/25 dark:text-emerald-100 dark:ring-1 dark:ring-emerald-200/45 dark:shadow-[0_0_10px_rgba(74,222,128,0.32)]">
           {count}
         </span>
         {!isH && (
@@ -197,9 +201,7 @@ function CompletedColumn({ taskIds, count, children, orientation }: any) {
         <div
           ref={setNodeRef}
           className={`rounded-lg border-2 border-solid p-2 transition ${
-            isH
-              ? "flex flex-col gap-2"
-              : "flex flex-nowrap items-start gap-2 overflow-x-auto pb-2"
+            isH ? "flex flex-col gap-2" : "flex flex-nowrap items-start gap-2 overflow-x-auto pb-2"
           } ${isOver ? "border-emerald-500 bg-emerald-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}
           style={{ minHeight: isH ? 200 : 120 }}
         >
@@ -219,6 +221,7 @@ function SortableColumn({
   onDelete,
   onAdd,
   orientation,
+  minimal,
   canManage,
 }: any) {
   const sortable = useSortable({ id: `col:${col.id}`, data: { type: "column", colId: col.id } });
@@ -246,7 +249,7 @@ function SortableColumn({
     <div
       ref={setSortRef}
       style={style}
-      className={isH ? "flex w-fit min-w-72 shrink-0 flex-col" : "flex w-full flex-col"}
+      className={isH ? (minimal ? "flex w-[clamp(15rem,18vw,19rem)] shrink-0 flex-col" : "flex w-fit min-w-72 shrink-0 flex-col") : "flex w-full flex-col"}
     >
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
@@ -254,32 +257,44 @@ function SortableColumn({
             <span
               {...attributes}
               {...listeners}
-              className="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing"
+              className="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted active:cursor-grabbing dark:text-slate-100 dark:hover:bg-white/10"
               title="Arrastar coluna"
             >
               <GripVertical className="h-4 w-4" />
             </span>
           )}
-          <span className="h-3 w-3 rounded-full" style={{ background: col.color || "#1e3a8a" }} />
+          <span
+            className="h-3 w-3 rounded-full dark:ring-2 dark:ring-white/45 dark:shadow-[0_0_12px_rgba(255,255,255,0.32)]"
+            style={{ background: col.color || "#1e3a8a" }}
+          />
           <h3 className="font-semibold">{col.name}</h3>
           <span
-            className="rounded-full px-2 py-0.5 text-xs font-medium"
+            className="rounded-full px-2 py-0.5 text-xs font-semibold dark:ring-1 dark:ring-white/45 dark:shadow-[0_0_10px_rgba(255,255,255,0.2)]"
             style={{
-              color: "#000000",
-              backgroundColor: `${col.color || "#1e3a8a"}26`,
+              color: "var(--foreground)",
+              backgroundColor: `${col.color || "#1e3a8a"}40`,
             }}
           >
             {count}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAdd}>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 dark:text-slate-100 dark:hover:bg-white/10"
+            onClick={onAdd}
+          >
             <Plus className="h-4 w-4" />
           </Button>
           {canManage && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 dark:text-slate-100 dark:hover:bg-white/10"
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -304,9 +319,7 @@ function SortableColumn({
         <div
           ref={setDropRef}
           className={`rounded-lg border-2 border-solid border-l-4 p-2 transition ${
-            isH
-              ? "flex flex-col gap-3"
-              : "flex flex-nowrap items-start gap-4 overflow-x-auto pb-2"
+            isH ? "flex flex-col gap-3" : "flex flex-nowrap items-start gap-4 overflow-x-auto pb-2"
           } ${isOver ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}
           style={{
             minHeight: isH ? 200 : 120,
@@ -333,13 +346,31 @@ function KanbanPage() {
   const { data: statuses = [] } = useTaskStatuses();
   const { data: collaborators = [] } = useTaskCollaborators();
   const collaboratorTaskIds = useMemo(
-    () => new Set(collaborators.filter((collaborator) => collaborator.collaborator_id === user?.id).map((collaborator) => collaborator.task_id)),
+    () =>
+      new Set(
+        collaborators
+          .filter((collaborator) => collaborator.collaborator_id === user?.id)
+          .map((collaborator) => collaborator.task_id),
+      ),
     [collaborators, user?.id],
   );
   const { data: boardPrefs } = useBoardPreferences();
   const { data: allSubtasks = [] } = useSubtasks();
   const updatePrefs = useUpdateBoardPreferences();
   const orientation = boardPrefs?.kanban_orientation ?? "vertical";
+  const minimalCardsStorageKey = `kanban-minimal-cards:${user?.id ?? "anonymous"}`;
+  const [minimalCards, setMinimalCards] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setMinimalCards(window.localStorage.getItem(minimalCardsStorageKey) === "true");
+  }, [minimalCardsStorageKey]);
+
+  const toggleMinimalCards = () => {
+    const next = !minimalCards;
+    setMinimalCards(next);
+    if (typeof window !== "undefined") window.localStorage.setItem(minimalCardsStorageKey, String(next));
+  };
 
   const subtaskAssigneeTaskIds = useMemo(() => {
     const s = new Set<string>();
@@ -389,6 +420,9 @@ function KanbanPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [defaultCol, setDefaultCol] = useState<string | null>(null);
+  const [duplicateTaskTarget, setDuplicateTaskTarget] = useState<Task | null>(null);
+  const [duplicateDueDate, setDuplicateDueDate] = useState("");
+  const [duplicatingTask, setDuplicatingTask] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -529,7 +563,14 @@ function KanbanPage() {
       subtaskAssigneeTaskIdsByUser,
     });
     return r;
-  }, [tasks, filters, user?.id, subtaskAssigneeTaskIds, collaboratorTaskIds, subtaskAssigneeTaskIdsByUser]);
+  }, [
+    tasks,
+    filters,
+    user?.id,
+    subtaskAssigneeTaskIds,
+    collaboratorTaskIds,
+    subtaskAssigneeTaskIdsByUser,
+  ]);
 
   const sortedTasks = useMemo(() => {
     const r = [...filtered];
@@ -862,30 +903,31 @@ function KanbanPage() {
     qc.invalidateQueries({ queryKey: ["tasks"] });
   };
 
-  const duplicateTask = async (task: Task) => {
-    if (!user) return;
+  const duplicateTask = async (task: Task, dueDate: string) => {
+    if (!user || !dueDate) return;
+    setDuplicatingTask(true);
     try {
       // 1. Criar nova tarefa
-      const { data: newTask, error: taskError } = await supabase
-        .from("tasks")
-        .insert({
-          title: `${task.title} (cópia)`,
-          description: task.description,
-          status: task.status === "done" ? "todo" : task.status,
-          priority: task.priority,
-          column_id: task.column_id,
-          client_id: task.client_id,
-          assignee_id: task.assignee_id,
-          due_date: task.due_date,
-          color: task.color,
-          status_id: task.status_id,
-          created_by: user.id,
-          position: 9999,
-        })
-        .select()
-        .single();
+      // Não use INSERT ... RETURNING: a política SELECT pode bloquear a leitura
+      // da linha recém-criada. Geramos o UUID no cliente e inserimos sem select.
+      const newTaskId = crypto.randomUUID();
+      const { error: taskError } = await supabase.from("tasks").insert({
+        id: newTaskId,
+        title: `${task.title} (cópia)`,
+        description: task.description,
+        status: task.status === "done" ? "todo" : task.status,
+        priority: task.priority,
+        column_id: task.column_id,
+        client_id: task.client_id,
+        assignee_id: task.assignee_id,
+        due_date: new Date(`${dueDate}T12:00:00`).toISOString(),
+        color: task.color,
+        status_id: task.status_id,
+        completed_at: null,
+        created_by: user.id,
+        position: 9999,
+      });
       if (taskError) throw taskError;
-      const newTaskId = newTask.id;
 
       // 2. Copiar subtarefas
       const { data: subs } = await supabase
@@ -893,16 +935,14 @@ function KanbanPage() {
         .select("title, done, position")
         .eq("task_id", task.id);
       if (subs && subs.length > 0) {
-        await supabase
-          .from("subtasks")
-          .insert(
-            subs.map((s) => ({
-              task_id: newTaskId,
-              title: s.title,
-              done: s.done,
-              position: s.position,
-            })),
-          );
+        await supabase.from("subtasks").insert(
+          subs.map((s) => ({
+            task_id: newTaskId,
+            title: s.title,
+            done: s.done,
+            position: s.position,
+          })),
+        );
       }
 
       // 3. Copiar comentários
@@ -971,9 +1011,13 @@ function KanbanPage() {
       }
 
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      setDuplicateTaskTarget(null);
+      setDuplicateDueDate("");
       toast.success("Tarefa duplicada");
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setDuplicatingTask(false);
     }
   };
 
@@ -1176,108 +1220,126 @@ function KanbanPage() {
                     kanban_orientation: orientation === "horizontal" ? "vertical" : "horizontal",
                   })
                 }
-                title={orientation === "horizontal" ? "Mudar para vertical" : "Mudar para horizontal"}
+                title={
+                  orientation === "horizontal" ? "Mudar para vertical" : "Mudar para horizontal"
+                }
               >
-                {orientation === "horizontal" ? <Rows className="h-3.5 w-3.5" /> : <Columns className="h-3.5 w-3.5" />}
+                {orientation === "horizontal" ? (
+                  <Rows className="h-3.5 w-3.5" />
+                ) : (
+                  <Columns className="h-3.5 w-3.5" />
+                )}
                 {orientation === "horizontal" ? "Vertical" : "Horizontal"}
               </Button>
+              <Button
+                size="sm"
+                variant={minimalCards ? "default" : "outline"}
+                className="h-7 gap-1"
+                onClick={toggleMinimalCards}
+                title={minimalCards ? "Exibir cards completos" : "Exibir cards minimalistas"}
+              >
+                {minimalCards ? (
+                  <PanelsTopLeft className="h-3.5 w-3.5" />
+                ) : (
+                  <PanelTop className="h-3.5 w-3.5" />
+                )}
+                {minimalCards ? "Completo" : "Minimalista"}
+              </Button>{" "}
               <CardFieldsPopover />
             </div>
             <div className="mr-3 inline-flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Concluídas no período</span>
-                <Input
-                  type="date"
-                  value={completedRange.start}
-                  onChange={(e) =>
-                    setCompletedRange((range) => ({ ...range, start: e.target.value }))
-                  }
-                  className="h-7 w-36"
-                />
-                <span>até</span>
-                <Input
-                  type="date"
-                  value={completedRange.end}
-                  onChange={(e) =>
-                    setCompletedRange((range) => ({ ...range, end: e.target.value }))
-                  }
-                  className="h-7 w-36"
-                />
-                {completedRange.start || completedRange.end ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7"
-                    onClick={() => setCompletedRange({ start: "", end: "" })}
-                  >
-                    Limpar período
-                  </Button>
-                ) : null}
+              <span className="font-medium text-foreground">Concluídas no período</span>
+              <Input
+                type="date"
+                value={completedRange.start}
+                onChange={(e) =>
+                  setCompletedRange((range) => ({ ...range, start: e.target.value }))
+                }
+                className="h-7 w-36"
+              />
+              <span>até</span>
+              <Input
+                type="date"
+                value={completedRange.end}
+                onChange={(e) => setCompletedRange((range) => ({ ...range, end: e.target.value }))}
+                className="h-7 w-36"
+              />
+              {completedRange.start || completedRange.end ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7"
+                  onClick={() => setCompletedRange({ start: "", end: "" })}
+                >
+                  Limpar período
+                </Button>
+              ) : null}
             </div>
             <div className="inline-flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Ordenar:</span>
-                <Select
-                  value={sort.field}
-                  onValueChange={(v) => setSort((s) => ({ ...s, field: v as SortField }))}
-                >
-                  <SelectTrigger className="h-7 w-44">
-                    <SelectValue placeholder="1º critério" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="position">Posição (manual)</SelectItem>
-                    <SelectItem value="priority">Prioridade</SelectItem>
-                    <SelectItem value="due_date">Prazo</SelectItem>
-                    <SelectItem value="created_at">Data de criação</SelectItem>
-                    <SelectItem value="tag">Tag</SelectItem>
-                  </SelectContent>
-                </Select>
+              <span className="text-xs font-medium text-muted-foreground">Ordenar:</span>
+              <Select
+                value={sort.field}
+                onValueChange={(v) => setSort((s) => ({ ...s, field: v as SortField }))}
+              >
+                <SelectTrigger className="h-7 w-44">
+                  <SelectValue placeholder="1º critério" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="position">Posição (manual)</SelectItem>
+                  <SelectItem value="priority">Prioridade</SelectItem>
+                  <SelectItem value="due_date">Prazo</SelectItem>
+                  <SelectItem value="created_at">Data de criação</SelectItem>
+                  <SelectItem value="tag">Tag</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={() =>
+                  setSort((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
+                }
+                title="Inverter direção"
+              >
+                {sort.direction === "asc" ? (
+                  <ArrowUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ArrowDown className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">então:</span>
+              <Select
+                value={sort2.field}
+                onValueChange={(v) => setSort2((s) => ({ ...s, field: v as SortField | "none" }))}
+              >
+                <SelectTrigger className="h-7 w-44">
+                  <SelectValue placeholder="2º critério" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— nenhum —</SelectItem>
+                  <SelectItem value="priority">Prioridade</SelectItem>
+                  <SelectItem value="due_date">Prazo</SelectItem>
+                  <SelectItem value="created_at">Data de criação</SelectItem>
+                  <SelectItem value="tag">Tag</SelectItem>
+                </SelectContent>
+              </Select>
+              {sort2.field !== "none" && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7"
                   onClick={() =>
-                    setSort((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
+                    setSort2((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
                   }
-                  title="Inverter direção"
+                  title="Inverter direção secundária"
                 >
-                  {sort.direction === "asc" ? (
+                  {sort2.direction === "asc" ? (
                     <ArrowUp className="h-3.5 w-3.5" />
                   ) : (
                     <ArrowDown className="h-3.5 w-3.5" />
                   )}
                 </Button>
-                <span className="text-xs text-muted-foreground">então:</span>
-                <Select
-                  value={sort2.field}
-                  onValueChange={(v) => setSort2((s) => ({ ...s, field: v as SortField | "none" }))}
-                >
-                  <SelectTrigger className="h-7 w-44">
-                    <SelectValue placeholder="2º critério" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— nenhum —</SelectItem>
-                    <SelectItem value="priority">Prioridade</SelectItem>
-                    <SelectItem value="due_date">Prazo</SelectItem>
-                    <SelectItem value="created_at">Data de criação</SelectItem>
-                    <SelectItem value="tag">Tag</SelectItem>
-                  </SelectContent>
-                </Select>
-                {sort2.field !== "none" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7"
-                    onClick={() =>
-                      setSort2((s) => ({ ...s, direction: s.direction === "asc" ? "desc" : "asc" }))
-                    }
-                    title="Inverter direção secundária"
-                  >
-                    {sort2.direction === "asc" ? (
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                )}
+              )}
             </div>
           </TaskFilters>
         </div>
@@ -1318,6 +1380,7 @@ function KanbanPage() {
                     key={col.id}
                     col={col}
                     orientation={orientation}
+                    minimal={minimalCards}
                     taskIds={colTasks.map((t) => t.id)}
                     count={colTasks.length}
                     onAdd={() => {
@@ -1340,11 +1403,15 @@ function KanbanPage() {
                         tags={tags}
                         statuses={statuses}
                         collaborators={collaborators}
+                        minimal={minimalCards}
                         onEdit={() => {
                           setEditTask(t);
                           setDialogOpen(true);
                         }}
-                        onDuplicate={() => duplicateTask(t)}
+                        onDuplicate={() => {
+                          setDuplicateTaskTarget(t);
+                          setDuplicateDueDate("");
+                        }}
                       />
                     ))}
                   </SortableColumn>
@@ -1354,6 +1421,7 @@ function KanbanPage() {
               <CompletedColumn
                 count={completedTasks.length}
                 orientation={orientation}
+                minimal={minimalCards}
                 taskIds={completedTasks.map((t) => t.id)}
               >
                 {completedTasks.length === 0 ? (
@@ -1373,11 +1441,15 @@ function KanbanPage() {
                       tags={tags}
                       statuses={statuses}
                       collaborators={collaborators}
+                      minimal={minimalCards}
                       onEdit={() => {
                         setEditTask(t);
                         setDialogOpen(true);
                       }}
-                      onDuplicate={() => duplicateTask(t)}
+                      onDuplicate={() => {
+                        setDuplicateTaskTarget(t);
+                        setDuplicateDueDate("");
+                      }}
                     />
                   ))
                 )}
@@ -1395,6 +1467,7 @@ function KanbanPage() {
                   tags={tags}
                   statuses={statuses}
                   collaborators={collaborators}
+                  minimal={minimalCards}
                 />
               </div>
             )}
@@ -1408,6 +1481,46 @@ function KanbanPage() {
         task={editTask}
         defaultColumnId={defaultCol}
       />
+      <Dialog
+        open={!!duplicateTaskTarget}
+        onOpenChange={(open) => {
+          if (!open && !duplicatingTask) setDuplicateTaskTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Duplicar tarefa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Defina o novo prazo para a cópia de “{duplicateTaskTarget?.title}”.
+            </p>
+            <Input
+              type="date"
+              value={duplicateDueDate}
+              onChange={(event) => setDuplicateDueDate(event.target.value)}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={duplicatingTask}
+              onClick={() => setDuplicateTaskTarget(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={!duplicateDueDate || duplicatingTask}
+              onClick={() =>
+                duplicateTaskTarget && void duplicateTask(duplicateTaskTarget, duplicateDueDate)
+              }
+            >
+              {duplicatingTask ? "Duplicando…" : "Duplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <TagManagerDialog open={tagsOpen} onOpenChange={setTagsOpen} />
       <ClientFilesSheet open={filesOpen} onOpenChange={setFilesOpen} />
 

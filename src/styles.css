@@ -126,6 +126,13 @@
   --sidebar-border: oklch(0.25 0.05 264);
 }
 
+/* Os seletores de data são nativos do navegador; force ícones claros no tema escuro. */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(2) !important;
+  opacity: 1 !important;
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   body {

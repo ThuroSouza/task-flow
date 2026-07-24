@@ -107,6 +107,7 @@ interface Props {
   onEdit?: () => void;
   onDuplicate?: () => void;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
+  minimal?: boolean;
 }
 
 const PRIORITY_LABELS: Record<NonNullable<Task["priority"]>, { label: string; color: string }> = {
@@ -142,6 +143,7 @@ export function TaskCard({
   onEdit,
   onDuplicate,
   dragHandleProps,
+  minimal = false,
 }: Props) {
   const qc = useQueryClient();
   const { user, isAdmin } = useAuth();
@@ -729,6 +731,23 @@ export function TaskCard({
   };
 
 
+  if (minimal) {
+    return (
+      <div {...dragHandleProps} className="group flex min-h-[108px] w-full cursor-grab touch-none flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary/40 hover:shadow active:cursor-grabbing" title={task.title || "Sem título"}>
+        <div className="flex min-h-7 items-center gap-1.5 px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style={client?.color ? { background: client.color, color: clientText } : undefined}>
+          <Users className="h-3 w-3 shrink-0" />
+          <span className="truncate">{client?.name || "Sem cliente"}</span>
+        </div>
+        <button type="button" onPointerDown={stop} onClick={(event) => { stop(event); onEdit?.(); }} className="min-h-0 flex-1 px-2 py-1.5 text-left text-sm font-medium leading-snug [overflow-wrap:anywhere] hover:text-primary">
+          {task.title || <span className="text-muted-foreground">Sem título</span>}
+        </button>
+        <div className={cn("flex items-center gap-1 border-t px-2 py-1 text-[11px]", dueChipClass)}>
+          <CalendarIcon className="h-3 w-3 shrink-0" />
+          <span className="truncate">{dueLabel ? `Prazo: ${dueLabel}` : "Sem prazo"}</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <>
       <div

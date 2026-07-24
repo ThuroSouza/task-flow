@@ -117,7 +117,6 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
       setRecurrenceDays([1, 2, 3, 4, 5]);
       setRecurrenceEnd("");
       setRecurrenceOffsets({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
-      setRecurrenceTime("18:00");
     }
 
   }, [open, task, defaultColumnId]);
@@ -556,7 +555,7 @@ export function TaskDialog({ open, onOpenChange, task, defaultColumnId }: Props)
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="flex-1"
+                  className="task-deadline-date flex-1"
                   required={!task && !recurrenceEnabled}
                 />
                 {dueDate && (
